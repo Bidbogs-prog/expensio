@@ -19,8 +19,8 @@ export default function Home() {
 
   return (
     <div className="w-full relative ">
-      <div className="absolute right-2 top-2">
-        <Select onValueChange={setCurrency} defaultValue={currency}>
+      <div className="absolute right-2 -top-10">
+        <Select onValueChange={setCurrency} value={currency}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>

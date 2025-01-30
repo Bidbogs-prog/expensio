@@ -28,8 +28,8 @@ export default function Home() {
     <QueryClientProvider client={queryClient}>
       <div className="w-full relative ">
         <div className="ml-20">dashboard WIP</div>
-        <div className="absolute right-2 top-2">
-          <Select onValueChange={setCurrency} defaultValue={currency}>
+        <div className="absolute right-2 -top-5">
+          <Select onValueChange={setCurrency} value={currency}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
