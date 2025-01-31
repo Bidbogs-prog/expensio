@@ -47,6 +47,13 @@ export const useExpenseStore = create<ExpenseStore>()(
         get().calculateTotal();
         get().checkIfBroke();
       },
+      // removeExpense: (values) => {
+      //   set((state) => ({
+      //     expenses: [...state.expenses, values]
+      //   }));
+      //   get().calculateTotal();
+      //   get().checkIfBroke();
+      // },
 
       setCurrency: (currency) => {
         set({ currency });

@@ -38,13 +38,8 @@ export default function Home() {
           <div>
             {currentIncome} {currency}
           </div>
-          <div>
-            Current income after expense is: {Number(currentIncome) - total}{" "}
-            {currency}
-          </div>
-          {isBroke && (
-            <div className="text-red-600">BOI, you 'bout to be broke</div>
-          )}
+         
+          
         </div>
       </div>
     </div>

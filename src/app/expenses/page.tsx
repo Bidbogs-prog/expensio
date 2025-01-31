@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useExpenseStore } from "@/useExpenseStore";
 
 export default function Home() {
@@ -35,35 +36,59 @@ export default function Home() {
       </div>
       <div className="Expenses w-[400px] pl-5">
         <ExpenseForm />
-
-        <div className="ml-10 mt-4 flex gap-3">
-          <div className="grid grid-cols-1 justify-items-start">
-            {expenses.map((expense, index) => (
+        <div className="table w-[100%] mt-10">
+        <Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead className="w-[50px]">Category</TableHead>
+      <TableHead>Item</TableHead>
+      <TableHead className="text-right">Amount</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell className="font-medium">{expenses.map((expense, index) => (
               <div key={index}>
                 {expense.category.charAt(0).toUpperCase() +
                   expense.category.slice(1)}
               </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 justify-items-start">
-            {expenses.map((expense, index) => (
+            ))}</TableCell>
+      <TableCell>{expenses.map((expense, index) => (
               <div key={index}>
-                {expense.name.charAt(0).toUpperCase() + expense.name.slice(1)}:
+                {expense.name.charAt(0).toUpperCase() + expense.name.slice(1)}
               </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 justify-items-start">
-            {expenses.map((expense, index) => (
+            ))}</TableCell>
+      <TableCell className="text-right">{expenses.map((expense, index) => (
               <div key={index}>
                 {expense.amount} {currency}
               </div>
-            ))}
-          </div>
+            ))}</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell>Total</TableCell>
+      <TableCell></TableCell>
+      <TableCell className="text-right">{total} {currency}</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
         </div>
 
-        <div className="ml-10 mt-4">
-          Total: {total} {currency}
+        <div className="ml-10 mt-4 flex gap-3">
+          {/* <div className="grid grid-cols-1 justify-items-start">
+            
+          </div>
+          <div className="grid grid-cols-1 justify-items-start">
+            
+          </div>
+          <div className="grid grid-cols-1 justify-items-start">
+            
+          </div> */}
         </div>
+
+        {/* <div className="ml-10 mt-4">
+          Total: 
+        </div> */}
       </div>
     </div>
   );
