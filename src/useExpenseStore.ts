@@ -1,85 +1,155 @@
 import { create } from "zustand";
-import { persist } from 'zustand/middleware'
+import { persist } from "zustand/middleware";
 import { type ExpenseFormValues, type IncomeFormValues } from "./form-schemas";
 
 interface Expense {
   category: string;
   name: string;
-  amount: string; // Changed back to string to match form values
+  amount: string;
 }
 
 interface ExpenseStore {
-  // State
-  currentIncome: string; // Changed back to string
+  currentIncome: string;
   expenses: Expense[];
   currency: string;
   total: number;
   isBroke: boolean;
 
-  // Actions
   setIncome: (values: IncomeFormValues) => void;
   addExpense: (values: ExpenseFormValues) => void;
   setCurrency: (currency: string) => void;
   calculateTotal: () => void;
   checkIfBroke: () => void;
+  removeExpense: (indexToRemove: number) => void;
 }
 
 export const useExpenseStore = create<ExpenseStore>()(
   persist(
     (set, get) => ({
-      // Initial state
       currentIncome: "0",
       expenses: [],
       currency: "MAD",
       total: 0,
       isBroke: false,
 
-      // Actions
       setIncome: (values) => {
-        set({ currentIncome: values.income });
-        get().checkIfBroke();
+        set((state) => {
+          const newIncome = values.income;
+          const currentTotal = state.total;
+          const balance = Number(newIncome) - currentTotal;
+          console.log("Setting income:", {
+            newIncome,
+            currentTotal,
+            balance,
+            isBroke: balance < 0,
+          });
+
+          return {
+            currentIncome: newIncome,
+            isBroke: balance < 0,
+          };
+        });
       },
 
       addExpense: (values) => {
-        set((state) => ({
-          expenses: [...state.expenses, values]
-        }));
-        get().calculateTotal();
-        get().checkIfBroke();
+        set((state) => {
+          const newExpenses = [...state.expenses, values];
+          const newTotal = newExpenses.reduce(
+            (sum, expense) => sum + Number(expense.amount),
+            0
+          );
+          const balance = Number(state.currentIncome) - newTotal;
+
+          console.log("Adding expense:", {
+            newTotal,
+            currentIncome: state.currentIncome,
+            balance,
+            isBroke: balance < 0,
+          });
+
+          return {
+            expenses: newExpenses,
+            total: newTotal,
+            isBroke: balance < 0,
+          };
+        });
       },
-      // removeExpense: (values) => {
-      //   set((state) => ({
-      //     expenses: [...state.expenses, values]
-      //   }));
-      //   get().calculateTotal();
-      //   get().checkIfBroke();
-      // },
+
+      removeExpense: (indexToRemove: number) => {
+        set((state) => {
+          const newExpenses = state.expenses.filter(
+            (_, index) => index !== indexToRemove
+          );
+          const newTotal = newExpenses.reduce(
+            (sum, expense) => sum + Number(expense.amount),
+            0
+          );
+          const balance = Number(state.currentIncome) - newTotal;
+
+          console.log("Removing expense:", {
+            newTotal,
+            currentIncome: state.currentIncome,
+            balance,
+            isBroke: balance < 0,
+          });
+
+          return {
+            expenses: newExpenses,
+            total: newTotal,
+            isBroke: balance < 0,
+          };
+        });
+      },
 
       setCurrency: (currency) => {
         set({ currency });
       },
 
       calculateTotal: () => {
-        const total = get().expenses.reduce((sum, expense) => 
-          sum + Number(expense.amount), 0
+        const newTotal = get().expenses.reduce(
+          (sum, expense) => sum + Number(expense.amount),
+          0
         );
-        set({ total });
+        set((state) => {
+          const balance = Number(state.currentIncome) - newTotal;
+          console.log("Calculating total:", {
+            newTotal,
+            currentIncome: state.currentIncome,
+            balance,
+            isBroke: balance < 0,
+          });
+
+          return {
+            total: newTotal,
+            isBroke: balance < 0,
+          };
+        });
       },
 
       checkIfBroke: () => {
         const { currentIncome, total } = get();
-        set({ isBroke: Number(currentIncome) - total < 0 });
-      }
+        const balance = Number(currentIncome) - total;
+        const isNowBroke = balance < 0;
+
+        console.log("Checking if broke:", {
+          currentIncome,
+          total,
+          balance,
+          isNowBroke,
+        });
+
+        set({ isBroke: isNowBroke });
+      },
     }),
     {
-      name: 'expense-storage', // unique name for localStorage key
+      name: "expense-storage",
       partialize: (state) => ({
-        // Only persist these fields
         currentIncome: state.currentIncome,
         expenses: state.expenses,
         currency: state.currency,
-        total: state.total
-      })
+        total: state.total,
+        isBroke: state.isBroke,
+      }),
     }
   )
-)
+);

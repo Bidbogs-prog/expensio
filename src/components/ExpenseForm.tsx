@@ -41,11 +41,8 @@ export function ExpenseForm() {
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="flex flex-col gap-3 mt-5"
-      >
-        <div className="flex justify-evenly gap-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div className="grid grid-cols-3 gap-6">
           <FormField
             control={form.control}
             name="category"
@@ -57,7 +54,7 @@ export function ExpenseForm() {
                   defaultValue={field.value}
                 >
                   <FormControl>
-                    <SelectTrigger className="w-[130px]">
+                    <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                   </FormControl>
@@ -81,11 +78,7 @@ export function ExpenseForm() {
               <FormItem>
                 <FormLabel>Expense name</FormLabel>
                 <FormControl>
-                  <Input
-                    className="w-[200px]"
-                    placeholder="Enter expense name"
-                    {...field}
-                  />
+                  <Input placeholder="Enter expense name" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -99,21 +92,19 @@ export function ExpenseForm() {
               <FormItem>
                 <FormLabel>Amount</FormLabel>
                 <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="Enter amount"
-                    className="w-[140px]"
-                    {...field}
-                  />
+                  <Input type="number" placeholder="Enter amount" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
-        <Button type="submit" className="w-[100px]">
-          Add Expense
-        </Button>
+
+        <div className="flex justify-end">
+          <Button type="submit" className="w-[120px]">
+            Add Expense
+          </Button>
+        </div>
       </form>
     </Form>
   );

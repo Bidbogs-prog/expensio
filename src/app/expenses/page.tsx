@@ -1,7 +1,7 @@
 "use client";
 
 import { ExpenseForm } from "@/components/ExpenseForm";
-
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -9,20 +9,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useExpenseStore } from "@/useExpenseStore";
 
 export default function Home() {
-  const { currentIncome, expenses, currency, total, isBroke, setCurrency } =
+  const { expenses, currency, total, setCurrency, removeExpense } =
     useExpenseStore();
 
   const currencies = ["USD", "MAD", "EUR"] as const;
 
   return (
-    <div className="w-full relative ">
-      <div className="absolute right-2 -top-10">
+    <div className="w-full relative max-w-4xl mx-auto p-6">
+      <div className="flex justify-end mb-6">
         <Select onValueChange={setCurrency} value={currency}>
-          <SelectTrigger>
+          <SelectTrigger className="w-[80px] absolute top-2 right-2">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -34,61 +41,57 @@ export default function Home() {
           </SelectContent>
         </Select>
       </div>
-      <div className="Expenses w-[400px] pl-5">
-        <ExpenseForm />
-        <div className="table w-[100%] mt-10">
+
+      <ExpenseForm />
+
+      <div className="mt-10">
         <Table>
-  <TableHeader>
-    <TableRow>
-      <TableHead className="w-[50px]">Category</TableHead>
-      <TableHead>Item</TableHead>
-      <TableHead className="text-right">Amount</TableHead>
-    </TableRow>
-  </TableHeader>
-  <TableBody>
-    <TableRow>
-      <TableCell className="font-medium">{expenses.map((expense, index) => (
-              <div key={index}>
-                {expense.category.charAt(0).toUpperCase() +
-                  expense.category.slice(1)}
-              </div>
-            ))}</TableCell>
-      <TableCell>{expenses.map((expense, index) => (
-              <div key={index}>
-                {expense.name.charAt(0).toUpperCase() + expense.name.slice(1)}
-              </div>
-            ))}</TableCell>
-      <TableCell className="text-right">{expenses.map((expense, index) => (
-              <div key={index}>
-                {expense.amount} {currency}
-              </div>
-            ))}</TableCell>
-    </TableRow>
-    <TableRow>
-      <TableCell>Total</TableCell>
-      <TableCell></TableCell>
-      <TableCell className="text-right">{total} {currency}</TableCell>
-    </TableRow>
-  </TableBody>
-</Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[25%]">Category</TableHead>
+              <TableHead className="w-[35%]">Item</TableHead>
+              <TableHead className="w-[25%] text-right">Amount</TableHead>
+              <TableHead className="w-[15%]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {expenses.map((expense, index) => (
+              <TableRow key={index}>
+                <TableCell className="font-medium">
+                  {expense.category.charAt(0).toUpperCase() +
+                    expense.category.slice(1)}
+                </TableCell>
+                <TableCell>
+                  {expense.name.charAt(0).toUpperCase() + expense.name.slice(1)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {expense.amount} {currency}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => removeExpense(index)}
+                    className="h-8 w-8 rounded-full p-0"
+                  >
+                    ×
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
 
-        </div>
-
-        <div className="ml-10 mt-4 flex gap-3">
-          {/* <div className="grid grid-cols-1 justify-items-start">
-            
-          </div>
-          <div className="grid grid-cols-1 justify-items-start">
-            
-          </div>
-          <div className="grid grid-cols-1 justify-items-start">
-            
-          </div> */}
-        </div>
-
-        {/* <div className="ml-10 mt-4">
-          Total: 
-        </div> */}
+            {/* Total row */}
+            <TableRow>
+              <TableCell colSpan={2} className="font-semibold">
+                Total
+              </TableCell>
+              <TableCell className="text-right font-semibold">
+                {total} {currency}
+              </TableCell>
+              <TableCell />
+            </TableRow>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
