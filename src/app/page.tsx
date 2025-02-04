@@ -20,12 +20,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
-  const { currentIncome, expenses, currency, total, isBroke, setCurrency } =
+  const { currentIncome, currency, ExpenseTotal, IncomeTotal, isBroke, setCurrency } =
     useExpenseStore();
   const queryClient = new QueryClient();
   const currencies = ["USD", "MAD", "EUR"] as const;
 
-  const balance = Number(currentIncome) - total;
+  const balance = IncomeTotal - ExpenseTotal;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -67,7 +67,7 @@ export default function Home() {
             </CardHeader>
             <CardContent className="text-center">
               <span className="text-2xl font-bold text-green-600">
-                {currentIncome} {currency}
+                {IncomeTotal} {currency}
               </span>
             </CardContent>
           </Card>
@@ -78,7 +78,7 @@ export default function Home() {
             </CardHeader>
             <CardContent className="text-center">
               <span className="text-2xl font-bold text-gray-600">
-                {total} {currency}
+                {ExpenseTotal} {currency}
               </span>
             </CardContent>
           </Card>

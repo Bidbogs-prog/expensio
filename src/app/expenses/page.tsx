@@ -20,7 +20,7 @@ import {
 import { useExpenseStore } from "@/useExpenseStore";
 
 export default function Home() {
-  const { expenses, currency, total, setCurrency, removeExpense } =
+  const { expenses, currency, ExpenseTotal, setCurrency, removeExpense } =
     useExpenseStore();
 
   const currencies = ["USD", "MAD", "EUR"] as const;
@@ -74,7 +74,7 @@ export default function Home() {
                     onClick={() => removeExpense(index)}
                     className="h-8 w-8 rounded-full p-0"
                   >
-                    ×
+                    x
                   </Button>
                 </TableCell>
               </TableRow>
@@ -86,7 +86,7 @@ export default function Home() {
                 Total
               </TableCell>
               <TableCell className="text-right font-semibold">
-                {total} {currency}
+                {ExpenseTotal} {currency}
               </TableCell>
               <TableCell />
             </TableRow>

@@ -9,11 +9,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
-  const { currentIncome, currency, total, isBroke, setCurrency } =
+  const { currentIncome, currency, IncomeTotal, setCurrency, removeIncome } =
     useExpenseStore();
+  
   const currencies = ["USD", "MAD", "EUR"] as const;
 
   return (
@@ -37,49 +39,58 @@ export default function Home() {
       <div className="space-y-6">
         <IncomeForm />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Current Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">
-                  Current Income:
-                </span>
-                <span className="text-lg font-medium">
-                  {currentIncome} {currency}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">
-                  Total Expenses:
-                </span>
-                <span className="text-lg font-medium">
-                  {total} {currency}
-                </span>
-              </div>
-              <div className="flex justify-between items-center pt-2 border-t">
-                <span className="text-sm font-medium">Remaining Balance:</span>
-                <span
-                  className={`text-lg font-bold ${
-                    Number(currentIncome) - total < 0
-                      ? "text-red-600"
-                      : "text-green-600"
-                  }`}
-                >
-                  {Number(currentIncome) - total} {currency}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="mt-10">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[25%]">Category</TableHead>
+              <TableHead className="w-[35%]">Item</TableHead>
+              <TableHead className="w-[25%] text-right">Amount</TableHead>
+              <TableHead className="w-[15%]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(currentIncome || []).map((currentIncome, index) => (
+              <TableRow key={index}>
+                <TableCell className="font-medium">
+                  {currentIncome.category.charAt(0).toUpperCase() +
+                    currentIncome.category.slice(1)}
+                </TableCell>
+                <TableCell>
+                  {currentIncome.name.charAt(0).toUpperCase() + currentIncome.name.slice(1)}
+                </TableCell>
+                <TableCell className="text-right">
+                  {currentIncome.amount} {currency}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => removeIncome(index)}
+                    className="h-8 w-8 rounded-full p-0"
+                  >
+                    ×
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
 
-        {isBroke && (
-          <div className="p-4 bg-red-100 border border-red-200 rounded-lg text-red-600">
-            Warning: Your expenses are exceeding your income!
-          </div>
-        )}
+            {/* Total row */}
+            <TableRow>
+              <TableCell colSpan={2} className="font-semibold">
+                Total
+              </TableCell>
+              <TableCell className="text-right font-semibold">
+                {IncomeTotal} {currency}
+              </TableCell>
+              <TableCell />
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+
+      
+      
       </div>
     </div>
   );
