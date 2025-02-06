@@ -18,9 +18,11 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import OChart from "@/components/ui/expensesPieChart";
+import IOChart from "@/components/ui/incomePieChart";
 
 export default function Home() {
-  const { currentIncome, currency, ExpenseTotal, IncomeTotal, isBroke, setCurrency } =
+  const { currency, ExpenseTotal, IncomeTotal, isBroke, setCurrency } =
     useExpenseStore();
   const queryClient = new QueryClient();
   const currencies = ["USD", "MAD", "EUR"] as const;
@@ -97,6 +99,10 @@ export default function Home() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="charts flex gap-5 justify-start ml-5">
+          <OChart />
+          <IOChart />
         </div>
       </div>
       <ReactQueryDevtools initialIsOpen={false} />
