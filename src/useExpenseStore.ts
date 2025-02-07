@@ -23,13 +23,14 @@ interface ExpenseStore {
   isBroke: boolean;
 
   addIncome: (values: IncomeFormValues) => void;
+  editExpense: (indexToEdit: number, values: ExpenseFormValues) => void;
   addExpense: (values: ExpenseFormValues) => void;
   setCurrency: (currency: string) => void;
   calculateExpenseTotal: () => void;
-  calculateIncomeTotal: ()=> void;
+  calculateIncomeTotal: () => void;
   checkIfBroke: () => void;
   removeExpense: (indexToRemove: number) => void;
-  removeIncome: (indexToRemove: number) => void
+  removeIncome: (indexToRemove: number) => void;
 }
 
 export const useExpenseStore = create<ExpenseStore>()(
@@ -46,7 +47,9 @@ export const useExpenseStore = create<ExpenseStore>()(
         set((state) => {
           const newIncome = [...state.currentIncome, values];
           const currentExpenseTotal = state.ExpenseTotal;
-          const balance = newIncome.reduce((sum, income) => sum + Number(income.amount), 0) - currentExpenseTotal;
+          const balance =
+            newIncome.reduce((sum, income) => sum + Number(income.amount), 0) -
+            currentExpenseTotal;
           console.log("Setting income:", {
             newIncome,
             currentExpenseTotal,
@@ -56,7 +59,10 @@ export const useExpenseStore = create<ExpenseStore>()(
 
           return {
             currentIncome: newIncome,
-            IncomeTotal: newIncome.reduce((sum, income) => sum + Number(income.amount), 0),
+            IncomeTotal: newIncome.reduce(
+              (sum, income) => sum + Number(income.amount),
+              0
+            ),
             isBroke: balance < 0,
           };
         });
@@ -69,7 +75,11 @@ export const useExpenseStore = create<ExpenseStore>()(
             (sum, expense) => sum + Number(expense.amount),
             0
           );
-          const balance = state.currentIncome.reduce((sum, income) => sum + Number(income.amount), 0) - newExpenseTotal;
+          const balance =
+            state.currentIncome.reduce(
+              (sum, income) => sum + Number(income.amount),
+              0
+            ) - newExpenseTotal;
 
           console.log("Adding expense:", {
             newExpenseTotal,
@@ -95,7 +105,11 @@ export const useExpenseStore = create<ExpenseStore>()(
             (sum, expense) => sum + Number(expense.amount),
             0
           );
-          const balance = state.currentIncome.reduce((sum, income) => sum + Number(income.amount), 0) - newTotal;
+          const balance =
+            state.currentIncome.reduce(
+              (sum, income) => sum + Number(income.amount),
+              0
+            ) - newTotal;
 
           console.log("Removing expense:", {
             newTotal,
@@ -121,7 +135,11 @@ export const useExpenseStore = create<ExpenseStore>()(
             (sum, income) => sum + Number(income.amount),
             0
           );
-          const balance = state.currentIncome.reduce((sum, income) => sum + Number(income.amount), 0) - newTotal;
+          const balance =
+            state.currentIncome.reduce(
+              (sum, income) => sum + Number(income.amount),
+              0
+            ) - newTotal;
 
           console.log("Removing Income:", {
             newTotal,
@@ -138,6 +156,36 @@ export const useExpenseStore = create<ExpenseStore>()(
         });
       },
 
+      editExpense: (indexToEdit: number, values: ExpenseFormValues) => {
+        set((state) => {
+          const newExpenses = state.expenses.map((exp, index) =>
+            index === indexToEdit ? values : exp
+          );
+          const newExpensesTotal = newExpenses.reduce(
+            (sum, expense) => sum + Number(expense.amount),
+            0
+          );
+          const balance =
+            state.currentIncome.reduce(
+              (sum, income) => sum + Number(income.amount),
+              0
+            ) - newExpensesTotal;
+
+          console.log("Editing expense:", {
+            newExpensesTotal,
+            currentIncome: state.currentIncome,
+            balance,
+            isBroke: balance < 0,
+          });
+
+          return {
+            expenses: newExpenses,
+            ExpenseTotal: newExpensesTotal,
+            isBroke: balance < 0,
+          };
+        });
+      },
+
       setCurrency: (currency) => {
         set({ currency });
       },
@@ -148,7 +196,11 @@ export const useExpenseStore = create<ExpenseStore>()(
           0
         );
         set((state) => {
-          const balance = state.currentIncome.reduce((sum, income) => sum + Number(income.amount), 0) - newTotal;
+          const balance =
+            state.currentIncome.reduce(
+              (sum, income) => sum + Number(income.amount),
+              0
+            ) - newTotal;
           console.log("Calculating total:", {
             newTotal,
             currentIncome: state.currentIncome,
@@ -163,13 +215,17 @@ export const useExpenseStore = create<ExpenseStore>()(
         });
       },
 
-      calculateIncomeTotal: ()=>{
+      calculateIncomeTotal: () => {
         const newTotal = get().currentIncome.reduce(
           (sum, currentIncome) => sum + Number(currentIncome.amount),
           0
         );
         set((state) => {
-          const balance = state.currentIncome.reduce((sum, income) => sum + Number(income.amount), 0) - newTotal;;
+          const balance =
+            state.currentIncome.reduce(
+              (sum, income) => sum + Number(income.amount),
+              0
+            ) - newTotal;
           console.log("Calculating total:", {
             newTotal,
             currentIncome: state.currentIncome,
@@ -182,7 +238,6 @@ export const useExpenseStore = create<ExpenseStore>()(
             isBroke: balance < 0,
           };
         });
-
       },
 
       checkIfBroke: () => {
