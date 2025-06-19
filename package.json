@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack -p 3001",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -16,6 +16,7 @@
     "@radix-ui/react-separator": "^1.1.1",
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-tooltip": "^1.1.7",
+    "@supabase/supabase-js": "^2.50.0",
     "@tanstack/react-query": "^5.65.1",
     "@tanstack/react-query-devtools": "^5.65.1",
     "class-variance-authority": "^0.7.1",
