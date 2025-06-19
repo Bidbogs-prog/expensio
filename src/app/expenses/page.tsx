@@ -1,3 +1,4 @@
+// src/app/expenses/page.tsx
 "use client";
 
 import { ExpenseForm } from "@/components/ExpenseForm";
@@ -19,11 +20,28 @@ import {
 } from "@/components/ui/table";
 import { useExpenseStore } from "@/useExpenseStore";
 
-export default function Home() {
-  const { expenses, currency, ExpenseTotal, setCurrency, removeExpense } =
-    useExpenseStore();
+export default function ExpensesPage() {
+  const { 
+    expenses, 
+    currency, 
+    ExpenseTotal, 
+    setCurrency, 
+    removeExpense,
+    isLoading,
+    error 
+  } = useExpenseStore();
 
   const currencies = ["USD", "MAD", "EUR"] as const;
+
+  if (error) {
+    return (
+      <div className="w-full max-w-4xl mx-auto p-6">
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <p className="text-red-600">Error: {error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full relative max-w-4xl mx-auto p-6">
@@ -45,6 +63,12 @@ export default function Home() {
       <ExpenseForm />
 
       <div className="mt-10">
+        {isLoading && (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+          </div>
+        )}
+        
         <Table>
           <TableHeader>
             <TableRow>
@@ -55,8 +79,8 @@ export default function Home() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {expenses.map((expense, index) => (
-              <TableRow key={index}>
+            {expenses.map((expense) => (
+              <TableRow key={expense.id}>
                 <TableCell className="font-medium">
                   {expense.category.charAt(0).toUpperCase() +
                     expense.category.slice(1)}
@@ -71,10 +95,11 @@ export default function Home() {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => removeExpense(index)}
+                    onClick={() => expense.id && removeExpense(expense.id)}
                     className="h-8 w-8 rounded-full p-0"
+                    disabled={isLoading}
                   >
-                    x
+                    ×
                   </Button>
                 </TableCell>
               </TableRow>

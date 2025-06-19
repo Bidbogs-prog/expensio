@@ -1,270 +1,230 @@
+// src/useExpenseStore.ts
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { expensesApi, incomeApi, userSettingsApi } from "./lib/api";
+import { type Expense, type Income } from "./lib/supabase";
 import { type ExpenseFormValues, type IncomeFormValues } from "./form-schemas";
 
-interface Expense {
-  category: string;
-  name: string;
-  amount: string;
-}
-
-interface CurrentIncome {
-  category: string;
-  name: string;
-  amount: string;
-}
-
 interface ExpenseStore {
-  currentIncome: CurrentIncome[];
+  // State
+  currentIncome: Income[];
   expenses: Expense[];
   currency: string;
+  isLoading: boolean;
+  error: string | null;
+
+  // Computed values
   ExpenseTotal: number;
   IncomeTotal: number;
   isBroke: boolean;
 
-  addIncome: (values: IncomeFormValues) => void;
-  editExpense: (indexToEdit: number, values: ExpenseFormValues) => void;
-  addExpense: (values: ExpenseFormValues) => void;
-  setCurrency: (currency: string) => void;
-  calculateExpenseTotal: () => void;
-  calculateIncomeTotal: () => void;
-  checkIfBroke: () => void;
-  removeExpense: (indexToRemove: number) => void;
-  removeIncome: (indexToRemove: number) => void;
+  // Actions
+  initializeData: () => Promise<void>;
+  clearData: () => Promise<void>;
+  addIncome: (values: IncomeFormValues) => Promise<void>;
+  addExpense: (values: ExpenseFormValues) => Promise<void>;
+  removeExpense: (id: number) => Promise<void>;
+  removeIncome: (id: number) => Promise<void>;
+  editExpense: (id: number, values: ExpenseFormValues) => Promise<void>;
+  setCurrency: (currency: string) => Promise<void>;
+  
+  // Internal helpers
+  calculateTotals: () => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
 }
 
-export const useExpenseStore = create<ExpenseStore>()(
-  persist(
-    (set, get) => ({
-      currentIncome: [],
-      expenses: [],
-      currency: "MAD",
-      ExpenseTotal: 0,
-      IncomeTotal: 0,
-      isBroke: false,
+export const useExpenseStore = create<ExpenseStore>((set, get) => ({
+  // Initial state
+  currentIncome: [],
+  expenses: [],
+  currency: "MAD",
+  isLoading: false,
+  error: null,
+  ExpenseTotal: 0,
+  IncomeTotal: 0,
+  isBroke: false,
 
-      addIncome: (values) => {
-        set((state) => {
-          const newIncome = [...state.currentIncome, values];
-          const currentExpenseTotal = state.ExpenseTotal;
-          const balance =
-            newIncome.reduce((sum, income) => sum + Number(income.amount), 0) -
-            currentExpenseTotal;
-          console.log("Setting income:", {
-            newIncome,
-            currentExpenseTotal,
-            balance,
-            isBroke: balance < 0,
-          });
+  // Initialize data from Supabase
+  initializeData: async () => {
+    try {
+      set({ isLoading: true, error: null });
+      
+      // Load data in parallel
+      const [expenses, income, settings] = await Promise.all([
+        expensesApi.getAll(),
+        incomeApi.getAll(),
+        userSettingsApi.get()
+      ]);
 
-          return {
-            currentIncome: newIncome,
-            IncomeTotal: newIncome.reduce(
-              (sum, income) => sum + Number(income.amount),
-              0
-            ),
-            isBroke: balance < 0,
-          };
-        });
-      },
+      set({
+        expenses,
+        currentIncome: income,
+        currency: settings?.currency || "MAD",
+      });
 
-      addExpense: (values) => {
-        set((state) => {
-          const newExpenses = [...state.expenses, values];
-          const newExpenseTotal = newExpenses.reduce(
-            (sum, expense) => sum + Number(expense.amount),
-            0
-          );
-          const balance =
-            state.currentIncome.reduce(
-              (sum, income) => sum + Number(income.amount),
-              0
-            ) - newExpenseTotal;
-
-          console.log("Adding expense:", {
-            newExpenseTotal,
-            currentIncome: state.currentIncome,
-            balance,
-            isBroke: balance < 0,
-          });
-
-          return {
-            expenses: newExpenses,
-            ExpenseTotal: newExpenseTotal,
-            isBroke: balance < 0,
-          };
-        });
-      },
-
-      removeExpense: (indexToRemove: number) => {
-        set((state) => {
-          const newExpenses = state.expenses.filter(
-            (_, index) => index !== indexToRemove
-          );
-          const newTotal = newExpenses.reduce(
-            (sum, expense) => sum + Number(expense.amount),
-            0
-          );
-          const balance =
-            state.currentIncome.reduce(
-              (sum, income) => sum + Number(income.amount),
-              0
-            ) - newTotal;
-
-          console.log("Removing expense:", {
-            newTotal,
-            currentIncome: state.currentIncome,
-            balance,
-            isBroke: balance < 0,
-          });
-
-          return {
-            expenses: newExpenses,
-            ExpenseTotal: newTotal,
-            isBroke: balance < 0,
-          };
-        });
-      },
-
-      removeIncome: (indexToRemove: number) => {
-        set((state) => {
-          const newIncome = state.currentIncome.filter(
-            (_, index) => index !== indexToRemove
-          );
-          const newTotal = newIncome.reduce(
-            (sum, income) => sum + Number(income.amount),
-            0
-          );
-          const balance =
-            state.currentIncome.reduce(
-              (sum, income) => sum + Number(income.amount),
-              0
-            ) - newTotal;
-
-          console.log("Removing Income:", {
-            newTotal,
-            currentIncome: state.currentIncome,
-            balance,
-            isBroke: balance < 0,
-          });
-
-          return {
-            currentIncome: newIncome,
-            IncomeTotal: newTotal,
-            isBroke: balance < 0,
-          };
-        });
-      },
-
-      editExpense: (indexToEdit: number, values: ExpenseFormValues) => {
-        set((state) => {
-          const newExpenses = state.expenses.map((exp, index) =>
-            index === indexToEdit ? values : exp
-          );
-          const newExpensesTotal = newExpenses.reduce(
-            (sum, expense) => sum + Number(expense.amount),
-            0
-          );
-          const balance =
-            state.currentIncome.reduce(
-              (sum, income) => sum + Number(income.amount),
-              0
-            ) - newExpensesTotal;
-
-          console.log("Editing expense:", {
-            newExpensesTotal,
-            currentIncome: state.currentIncome,
-            balance,
-            isBroke: balance < 0,
-          });
-
-          return {
-            expenses: newExpenses,
-            ExpenseTotal: newExpensesTotal,
-            isBroke: balance < 0,
-          };
-        });
-      },
-
-      setCurrency: (currency) => {
-        set({ currency });
-      },
-
-      calculateExpenseTotal: () => {
-        const newTotal = get().expenses.reduce(
-          (sum, expense) => sum + Number(expense.amount),
-          0
-        );
-        set((state) => {
-          const balance =
-            state.currentIncome.reduce(
-              (sum, income) => sum + Number(income.amount),
-              0
-            ) - newTotal;
-          console.log("Calculating total:", {
-            newTotal,
-            currentIncome: state.currentIncome,
-            balance,
-            isBroke: balance < 0,
-          });
-
-          return {
-            ExpenseTotal: newTotal,
-            isBroke: balance < 0,
-          };
-        });
-      },
-
-      calculateIncomeTotal: () => {
-        const newTotal = get().currentIncome.reduce(
-          (sum, currentIncome) => sum + Number(currentIncome.amount),
-          0
-        );
-        set((state) => {
-          const balance =
-            state.currentIncome.reduce(
-              (sum, income) => sum + Number(income.amount),
-              0
-            ) - newTotal;
-          console.log("Calculating total:", {
-            newTotal,
-            currentIncome: state.currentIncome,
-            balance,
-            isBroke: balance < 0,
-          });
-
-          return {
-            IncomeTotal: newTotal,
-            isBroke: balance < 0,
-          };
-        });
-      },
-
-      checkIfBroke: () => {
-        const { IncomeTotal, ExpenseTotal } = get();
-        const balance = Number(IncomeTotal) - ExpenseTotal;
-        const isNowBroke = balance < 0;
-
-        console.log("Checking if broke:", {
-          IncomeTotal,
-          ExpenseTotal,
-          balance,
-          isNowBroke,
-        });
-
-        set({ isBroke: isNowBroke });
-      },
-    }),
-    {
-      name: "expense-storage",
-      partialize: (state) => ({
-        currentIncome: state.currentIncome,
-        expenses: state.expenses,
-        currency: state.currency,
-        ExpenseTotal: state.ExpenseTotal,
-        IncomeTotal: state.IncomeTotal,
-        isBroke: state.isBroke,
-      }),
+      get().calculateTotals();
+    } catch (error) {
+      console.error('Error initializing data:', error);
+      set({ error: error instanceof Error ? error.message : 'An error occurred' });
+    } finally {
+      set({ isLoading: false });
     }
-  )
-);
+  },
+
+  clearData: async () => {
+  set({
+    currentIncome: [],
+  expenses: [],
+  currency: "MAD",
+  isLoading: false,
+  error: null,
+  ExpenseTotal: 0,
+  IncomeTotal: 0,
+  isBroke: false,
+  });
+},
+
+  // Add income
+  addIncome: async (values) => {
+    try {
+      set({ isLoading: true, error: null });
+      
+      const newIncome = await incomeApi.create({
+        category: values.category,
+        name: values.name,
+        amount: Number(values.amount)
+      });
+
+      set((state) => ({
+        currentIncome: [newIncome, ...state.currentIncome],
+      }));
+
+      get().calculateTotals();
+    } catch (error) {
+      console.error('Error adding income:', error);
+      set({ error: error instanceof Error ? error.message : 'Failed to add income' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Add expense
+  addExpense: async (values) => {
+    try {
+      set({ isLoading: true, error: null });
+      
+      const newExpense = await expensesApi.create({
+        category: values.category,
+        name: values.name,
+        amount: Number(values.amount)
+      });
+
+      set((state) => ({
+        expenses: [newExpense, ...state.expenses],
+      }));
+
+      get().calculateTotals();
+    } catch (error) {
+      console.error('Error adding expense:', error);
+      set({ error: error instanceof Error ? error.message : 'Failed to add expense' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Remove expense
+  removeExpense: async (id) => {
+    try {
+      set({ isLoading: true, error: null });
+      
+      await expensesApi.delete(id);
+
+      set((state) => ({
+        expenses: state.expenses.filter(expense => expense.id !== id),
+      }));
+
+      get().calculateTotals();
+    } catch (error) {
+      console.error('Error removing expense:', error);
+      set({ error: error instanceof Error ? error.message : 'Failed to remove expense' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Remove income
+  removeIncome: async (id) => {
+    try {
+      set({ isLoading: true, error: null });
+      
+      await incomeApi.delete(id);
+
+      set((state) => ({
+        currentIncome: state.currentIncome.filter(income => income.id !== id),
+      }));
+
+      get().calculateTotals();
+    } catch (error) {
+      console.error('Error removing income:', error);
+      set({ error: error instanceof Error ? error.message : 'Failed to remove income' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Edit expense
+  editExpense: async (id, values) => {
+    try {
+      set({ isLoading: true, error: null });
+      
+      const updatedExpense = await expensesApi.update(id, {
+        category: values.category,
+        name: values.name,
+        amount: Number(values.amount)
+      });
+
+      set((state) => ({
+        expenses: state.expenses.map(expense => 
+          expense.id === id ? updatedExpense : expense
+        ),
+      }));
+
+      get().calculateTotals();
+    } catch (error) {
+      console.error('Error editing expense:', error);
+      set({ error: error instanceof Error ? error.message : 'Failed to edit expense' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Set currency
+  setCurrency: async (currency) => {
+    try {
+      set({ isLoading: true, error: null });
+      
+      await userSettingsApi.upsert({ currency });
+      set({ currency });
+    } catch (error) {
+      console.error('Error setting currency:', error);
+      set({ error: error instanceof Error ? error.message : 'Failed to update currency' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Calculate totals and broke status
+  calculateTotals: () => {
+    const { expenses, currentIncome } = get();
+    
+    const ExpenseTotal = expenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+    const IncomeTotal = currentIncome.reduce((sum, income) => sum + Number(income.amount), 0);
+    const isBroke = IncomeTotal < ExpenseTotal;
+
+    set({ ExpenseTotal, IncomeTotal, isBroke });
+  },
+
+  // Helper methods
+  setLoading: (isLoading) => set({ isLoading }),
+  setError: (error) => set({ error }),
+}));

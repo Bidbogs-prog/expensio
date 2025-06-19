@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
-  const { currentIncome, currency, IncomeTotal, setCurrency, removeIncome } =
+  const { currentIncome, currency, IncomeTotal, setCurrency, removeIncome, isLoading } =
     useExpenseStore();
   
   const currencies = ["USD", "MAD", "EUR"] as const;
@@ -21,7 +21,6 @@ export default function Home() {
   return (
     <div className="w-full max-w-4xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold">Income Management</h1>
         <Select onValueChange={setCurrency} value={currency}>
           <SelectTrigger className="w-[80px]">
             <SelectValue />
@@ -36,10 +35,15 @@ export default function Home() {
         </Select>
       </div>
 
-      <div className="space-y-6">
-        <IncomeForm />
+      <IncomeForm />
+      
+      <div className="mt-10">
+        {isLoading && (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+          </div>
+        )}
 
-        <div className="mt-10">
         <Table>
           <TableHeader>
             <TableRow>
@@ -50,8 +54,8 @@ export default function Home() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(currentIncome || []).map((currentIncome, index) => (
-              <TableRow key={index}>
+            {currentIncome.map((currentIncome) => (
+              <TableRow key={currentIncome.id}>
                 <TableCell className="font-medium">
                   {currentIncome.category.charAt(0).toUpperCase() +
                     currentIncome.category.slice(1)}
@@ -66,8 +70,9 @@ export default function Home() {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => removeIncome(index)}
+                    onClick={() => currentIncome.id && removeIncome(currentIncome.id)}
                     className="h-8 w-8 rounded-full p-0"
+                    disabled={isLoading}
                   >
                     ×
                   </Button>
@@ -87,10 +92,6 @@ export default function Home() {
             </TableRow>
           </TableBody>
         </Table>
-      </div>
-
-      
-      
       </div>
     </div>
   );
