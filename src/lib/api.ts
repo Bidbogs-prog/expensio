@@ -122,32 +122,46 @@ export const userSettingsApi = {
       throw new Error('User not authenticated')
     }
 
-    console.log('Upserting settings:', { ...settings, user_id: user.id })
-
-    const { data, error } = await supabase
+    // First, try to get existing settings
+    const { data: existingSettings } = await supabase
       .from('user_settings')
-      .upsert([{ 
-        ...settings, 
-        user_id: user.id,
-        updated_at: new Date().toISOString() // Explicitly set updated_at
-      }], {
-        onConflict: 'user_id' // Specify conflict resolution
-      })
-      .select()
+      .select('*')
+      .eq('user_id', user.id)
       .single()
-    
-    if (error) {
-      console.error('Upsert error details:', {
-        error,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
-      })
-      throw new Error(`Database error: ${error.message}`)
-    }
 
-    console.log('Upsert successful:', data)
-    return data
+    if (existingSettings) {
+      // Update existing record
+      const { data, error } = await supabase
+        .from('user_settings')
+        .update({
+          ...settings,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Update error:', error)
+        throw new Error(`Update failed: ${error.message}`)
+      }
+      return data
+    } else {
+      // Insert new record
+      const { data, error } = await supabase
+        .from('user_settings')
+        .insert({
+          ...settings,
+          user_id: user.id
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Insert error:', error)
+        throw new Error(`Insert failed: ${error.message}`)
+      }
+      return data
+    }
   }
 }
