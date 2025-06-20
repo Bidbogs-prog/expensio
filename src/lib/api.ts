@@ -109,21 +109,45 @@ export const userSettingsApi = {
       .eq('user_id', user.id)
       .single()
     
-    if (error && error.code !== 'PGRST116') throw error
+    if (error && error.code !== 'PGRST116') {
+      console.error('Get user settings error:', error)
+      throw error
+    }
     return data
   },
 
   async upsert(settings: Omit<UserSettings, 'id' | 'created_at' | 'updated_at' | 'user_id'>): Promise<UserSettings> {
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('User not authenticated')
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
+
+    console.log('Upserting settings:', { ...settings, user_id: user.id })
 
     const { data, error } = await supabase
       .from('user_settings')
-      .upsert([{ ...settings, user_id: user.id }])
+      .upsert([{ 
+        ...settings, 
+        user_id: user.id,
+        updated_at: new Date().toISOString() // Explicitly set updated_at
+      }], {
+        onConflict: 'user_id' // Specify conflict resolution
+      })
       .select()
       .single()
     
-    if (error) throw error
+    if (error) {
+      console.error('Upsert error details:', {
+        error,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      })
+      throw new Error(`Database error: ${error.message}`)
+    }
+
+    console.log('Upsert successful:', data)
     return data
   }
 }
