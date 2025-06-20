@@ -50,7 +50,7 @@ const IOChart = () => {
   return (
     <Card className="flex flex-col w-[30%]">
       <CardHeader className="items-center pb-0">
-        <CardTitle>Expenses per category</CardTitle>
+        <CardTitle>Income per category</CardTitle>
         <CardDescription>
           Total: {currency} {IncomeTotal.toLocaleString()}
         </CardDescription>
