@@ -109,21 +109,59 @@ export const userSettingsApi = {
       .eq('user_id', user.id)
       .single()
     
-    if (error && error.code !== 'PGRST116') throw error
+    if (error && error.code !== 'PGRST116') {
+      console.error('Get user settings error:', error)
+      throw error
+    }
     return data
   },
 
   async upsert(settings: Omit<UserSettings, 'id' | 'created_at' | 'updated_at' | 'user_id'>): Promise<UserSettings> {
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('User not authenticated')
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
 
-    const { data, error } = await supabase
+    // First, try to get existing settings
+    const { data: existingSettings } = await supabase
       .from('user_settings')
-      .upsert([{ ...settings, user_id: user.id }])
-      .select()
+      .select('*')
+      .eq('user_id', user.id)
       .single()
-    
-    if (error) throw error
-    return data
+
+    if (existingSettings) {
+      // Update existing record
+      const { data, error } = await supabase
+        .from('user_settings')
+        .update({
+          ...settings,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Update error:', error)
+        throw new Error(`Update failed: ${error.message}`)
+      }
+      return data
+    } else {
+      // Insert new record
+      const { data, error } = await supabase
+        .from('user_settings')
+        .insert({
+          ...settings,
+          user_id: user.id
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Insert error:', error)
+        throw new Error(`Insert failed: ${error.message}`)
+      }
+      return data
+    }
   }
 }

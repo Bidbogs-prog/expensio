@@ -198,20 +198,33 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     }
   },
 
-  // Set currency
-  setCurrency: async (currency) => {
-    try {
-      set({ isLoading: true, error: null });
-      
-      await userSettingsApi.upsert({ currency });
-      set({ currency });
-    } catch (error) {
-      console.error('Error setting currency:', error);
-      set({ error: error instanceof Error ? error.message : 'Failed to update currency' });
-    } finally {
-      set({ isLoading: false });
-    }
-  },
+// Set currency 
+setCurrency: async (currency) => {
+  try {
+    set({ isLoading: true, error: null });
+    
+    console.log('Setting currency to:', currency)
+    
+    const result = await userSettingsApi.upsert({ currency });
+    console.log('Currency update result:', result)
+    
+    set({ currency });
+  } catch (error) {
+    console.error('Error setting currency - Full error:', error);
+    console.error('Error type:', typeof error);
+    console.error('Error keys:', Object.keys(error || {}));
+    
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : typeof error === 'string' 
+        ? error 
+        : 'Failed to update currency - Unknown error';
+        
+    set({ error: errorMessage });
+  } finally {
+    set({ isLoading: false });
+  }
+},
 
   // Calculate totals and broke status
   calculateTotals: () => {
