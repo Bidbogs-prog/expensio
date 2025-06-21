@@ -33,6 +33,33 @@ interface ExpenseStore {
   setError: (error: string | null) => void;
 }
 
+// Helper function to add timeout to API calls
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ]);
+};
+
+// Helper function to safely execute API calls with fallbacks
+const safeApiCall = async <T>(
+  apiCall: () => Promise<T>, 
+  fallbackValue: T, 
+  operationName: string
+): Promise<T> => {
+  try {
+    console.log(`Starting ${operationName}...`);
+    const result = await withTimeout(apiCall(), 8000);
+    console.log(`${operationName} completed successfully`);
+    return result;
+  } catch (error) {
+    console.error(`${operationName} failed:`, error);
+    return fallbackValue;
+  }
+};
+
 export const useExpenseStore = create<ExpenseStore>((set, get) => ({
   // Initial state
   currentIncome: [],
@@ -44,56 +71,83 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
   IncomeTotal: 0,
   isBroke: false,
 
-  // Initialize data from Supabase
+  // Initialize data from Supabase with better error handling
   initializeData: async () => {
     try {
+      console.log('Starting data initialization...');
       set({ isLoading: true, error: null });
       
-      // Load data in parallel
-      const [expenses, income, settings] = await Promise.all([
-        expensesApi.getAll(),
-        incomeApi.getAll(),
-        userSettingsApi.get()
+      // Load data with individual error handling and timeouts
+      const [expenses, income, settings] = await Promise.allSettled([
+        safeApiCall(() => expensesApi.getAll(), [], 'Loading expenses'),
+        safeApiCall(() => incomeApi.getAll(), [], 'Loading income'),
+        safeApiCall(() => userSettingsApi.get(), null, 'Loading settings')
       ]);
 
+      // Extract results, using fallback values for failed calls
+      const expensesResult = expenses.status === 'fulfilled' ? expenses.value : [];
+      const incomeResult = income.status === 'fulfilled' ? income.value : [];
+      const settingsResult = settings.status === 'fulfilled' ? settings.value : null;
+
+      // Log any failures for debugging
+      if (expenses.status === 'rejected') {
+        console.error('Failed to load expenses:', expenses.reason);
+      }
+      if (income.status === 'rejected') {
+        console.error('Failed to load income:', income.reason);
+      }
+      if (settings.status === 'rejected') {
+        console.error('Failed to load settings:', settings.reason);
+      }
+
+      console.log('Data loaded:', {
+        expenses: expensesResult.length,
+        income: incomeResult.length,
+        currency: settingsResult?.currency || 'MAD'
+      });
+
       set({
-        expenses,
-        currentIncome: income,
-        currency: settings?.currency || "MAD",
+        expenses: expensesResult,
+        currentIncome: incomeResult,
+        currency: settingsResult?.currency || "MAD",
       });
 
       get().calculateTotals();
+      console.log('Data initialization completed successfully');
+      
     } catch (error) {
-      console.error('Error initializing data:', error);
-      set({ error: error instanceof Error ? error.message : 'An error occurred' });
+      console.error('Critical error during data initialization:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to initialize data';
+      set({ error: errorMessage });
     } finally {
       set({ isLoading: false });
     }
   },
 
   clearData: async () => {
-  set({
-    currentIncome: [],
-  expenses: [],
-  currency: "MAD",
-  isLoading: false,
-  error: null,
-  ExpenseTotal: 0,
-  IncomeTotal: 0,
-  isBroke: false,
-  });
-},
+    console.log('Clearing all data...');
+    set({
+      currentIncome: [],
+      expenses: [],
+      currency: "MAD",
+      isLoading: false,
+      error: null,
+      ExpenseTotal: 0,
+      IncomeTotal: 0,
+      isBroke: false,
+    });
+  },
 
   // Add income
   addIncome: async (values) => {
     try {
       set({ isLoading: true, error: null });
       
-      const newIncome = await incomeApi.create({
+      const newIncome = await withTimeout(incomeApi.create({
         category: values.category,
         name: values.name,
         amount: Number(values.amount)
-      });
+      }));
 
       set((state) => ({
         currentIncome: [newIncome, ...state.currentIncome],
@@ -113,11 +167,11 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       
-      const newExpense = await expensesApi.create({
+      const newExpense = await withTimeout(expensesApi.create({
         category: values.category,
         name: values.name,
         amount: Number(values.amount)
-      });
+      }));
 
       set((state) => ({
         expenses: [newExpense, ...state.expenses],
@@ -137,7 +191,7 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       
-      await expensesApi.delete(id);
+      await withTimeout(expensesApi.delete(id));
 
       set((state) => ({
         expenses: state.expenses.filter(expense => expense.id !== id),
@@ -157,7 +211,7 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       
-      await incomeApi.delete(id);
+      await withTimeout(incomeApi.delete(id));
 
       set((state) => ({
         currentIncome: state.currentIncome.filter(income => income.id !== id),
@@ -177,11 +231,11 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       
-      const updatedExpense = await expensesApi.update(id, {
+      const updatedExpense = await withTimeout(expensesApi.update(id, {
         category: values.category,
         name: values.name,
         amount: Number(values.amount)
-      });
+      }));
 
       set((state) => ({
         expenses: state.expenses.map(expense => 
@@ -198,33 +252,31 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     }
   },
 
-// Set currency 
-setCurrency: async (currency) => {
-  try {
-    set({ isLoading: true, error: null });
-    
-    console.log('Setting currency to:', currency)
-    
-    const result = await userSettingsApi.upsert({ currency });
-    console.log('Currency update result:', result)
-    
-    set({ currency });
-  } catch (error) {
-    console.error('Error setting currency - Full error:', error);
-    console.error('Error type:', typeof error);
-    console.error('Error keys:', Object.keys(error || {}));
-    
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : typeof error === 'string' 
-        ? error 
-        : 'Failed to update currency - Unknown error';
-        
-    set({ error: errorMessage });
-  } finally {
-    set({ isLoading: false });
-  }
-},
+  // Set currency 
+  setCurrency: async (currency) => {
+    try {
+      set({ isLoading: true, error: null });
+      
+      console.log('Setting currency to:', currency);
+      
+      const result = await withTimeout(userSettingsApi.upsert({ currency }));
+      console.log('Currency update result:', result);
+      
+      set({ currency });
+    } catch (error) {
+      console.error('Error setting currency - Full error:', error);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : typeof error === 'string' 
+          ? error 
+          : 'Failed to update currency - Unknown error';
+          
+      set({ error: errorMessage });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 
   // Calculate totals and broke status
   calculateTotals: () => {

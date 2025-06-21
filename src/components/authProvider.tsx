@@ -1,7 +1,7 @@
 // src/components/AuthProvider.tsx
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useExpenseStore } from '@/useExpenseStore';
 import { Button } from '@/components/ui/button';
@@ -11,105 +11,245 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+type AuthState = 'loading' | 'authenticated' | 'unauthenticated' | 'error';
+
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [authState, setAuthState] = useState<AuthState>('loading');
+  const [error, setError] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  
   const initializeData = useExpenseStore(state => state.initializeData);
-  const clearData = useExpenseStore(state => state.clearData); // Add this to your store if it doesn't exist
+  const clearData = useExpenseStore(state => state.clearData);
+  
+  // Use refs to track initialization to prevent race conditions
+  const initializationRef = useRef<{
+    isInitializing: boolean;
+    hasInitialized: boolean;
+  }>({
+    isInitializing: false,
+    hasInitialized: false
+  });
+
+  const handleDataInitialization = useCallback(async () => {
+    if (initializationRef.current.isInitializing || initializationRef.current.hasInitialized) {
+      return;
+    }
+
+    initializationRef.current.isInitializing = true;
+    
+    try {
+      console.log('Starting data initialization...');
+      await initializeData();
+      initializationRef.current.hasInitialized = true;
+      console.log('Data initialization completed successfully');
+    } catch (error) {
+      console.error('Data initialization failed:', error);
+      // Don't set error state here - let the user try to use the app
+      // The API calls will handle auth errors individually
+    } finally {
+      initializationRef.current.isInitializing = false;
+    }
+  }, [initializeData]);
+
+  const resetInitialization = useCallback(() => {
+    initializationRef.current = {
+      isInitializing: false,
+      hasInitialized: false
+    };
+  }, []);
 
   useEffect(() => {
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session:', session);
-      setIsAuthenticated(!!session);
-      if (session) {
-        initializeData();
-      }
-      setIsLoading(false);
-    });
+    let mounted = true;
 
-    // Listen for auth changes
+    const initializeAuth = async () => {
+      try {
+        console.log('Initializing authentication...');
+        setError(null);
+        
+        // Get initial session with timeout
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session check timeout')), 10000)
+        );
+
+        const { data: { session }, error: sessionError } = await Promise.race([
+          sessionPromise,
+          timeoutPromise
+        ]) as any;
+        
+        if (!mounted) return;
+
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          setAuthState('error');
+          setError('Failed to restore session');
+          return;
+        }
+
+        if (session) {
+          console.log('Session found, user is authenticated');
+          setAuthState('authenticated');
+          // Initialize data after setting auth state
+          setTimeout(() => handleDataInitialization(), 100);
+        } else {
+          console.log('No session found');
+          setAuthState('unauthenticated');
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          setAuthState('error');
+          setError(error instanceof Error ? error.message : 'Authentication failed');
+        }
+      }
+    };
+
+    initializeAuth();
+
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session);
-        setIsAuthenticated(!!session);
+        console.log('Auth state change:', event, session?.user?.id ? 'user-present' : 'no-user');
         
-        if (session && event === 'SIGNED_IN') {
-          await initializeData();
-        } else if (event === 'SIGNED_OUT') {
-          // Clear any stored data when signing out
-          if (clearData) {
-            clearData();
-          }
+        if (!mounted) return;
+
+        switch (event) {
+          case 'SIGNED_IN':
+            if (session) {
+              resetInitialization();
+              setAuthState('authenticated');
+              setError(null);
+              // Small delay to ensure UI is ready
+              setTimeout(() => handleDataInitialization(), 100);
+            }
+            break;
+            
+          case 'SIGNED_OUT':
+            resetInitialization();
+            setAuthState('unauthenticated');
+            setError(null);
+            clearData?.();
+            break;
+            
+          case 'TOKEN_REFRESHED':
+            console.log('Token refreshed successfully');
+            // Don't reinitialize data on token refresh
+            if (session && authState !== 'authenticated') {
+              setAuthState('authenticated');
+            }
+            break;
+            
+          case 'PASSWORD_RECOVERY':
+          case 'USER_UPDATED':
+            // Handle these events without changing auth state
+            break;
+            
+          default:
+            console.log('Unhandled auth event:', event);
         }
       }
     );
 
-    return () => subscription.unsubscribe();
-  }, [initializeData, clearData]);
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [handleDataInitialization, resetInitialization, clearData, authState]);
 
   const signInWithGoogle = async () => {
     try {
+      setError(null);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/`
         }
       });
+      
       if (error) {
-        console.error('Error signing in:', error);
-        alert('Failed to sign in with Google');
+        console.error('Google sign in error:', error);
+        setError('Failed to sign in with Google');
       }
     } catch (error) {
       console.error('Unexpected error during Google sign in:', error);
+      setError('Unexpected error during sign in');
     }
   };
 
   const signInAnonymously = async () => {
     try {
+      setError(null);
       const { error } = await supabase.auth.signInAnonymously();
+      
       if (error) {
-        console.error('Error signing in anonymously:', error);
-        alert('Failed to sign in anonymously');
+        console.error('Anonymous sign in error:', error);
+        setError('Failed to sign in anonymously');
       }
     } catch (error) {
       console.error('Unexpected error during anonymous sign in:', error);
+      setError('Unexpected error during anonymous sign in');
     }
   };
 
   const signOut = async () => {
     try {
       setIsSigningOut(true);
-      console.log('Starting sign out process...');
+      setError(null);
       
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        console.error('Error signing out:', error);
-        alert('Failed to sign out. Please try again.');
+        console.error('Sign out error:', error);
+        setError('Failed to sign out');
         return;
       }
       
-      console.log('Sign out successful');
-      
-      // Force clear auth state if it doesn't happen automatically
-      setIsAuthenticated(false);
-      
-      // Clear any stored data
-      if (clearData) {
-        clearData();
-      }
+      // The auth state change listener will handle the cleanup
       
     } catch (error) {
       console.error('Unexpected error during sign out:', error);
-      alert('An unexpected error occurred. Please try again.');
+      setError('Unexpected error during sign out');
     } finally {
       setIsSigningOut(false);
     }
   };
 
-  if (isLoading) {
+  const retryInitialization = () => {
+    setError(null);
+    setAuthState('loading');
+    resetInitialization();
+  };
+
+  // Error state
+  if (authState === 'error') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold text-red-600">Connection Error</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-center">
+            <p className="text-red-600">{error}</p>
+            <div className="space-y-2">
+              <Button onClick={retryInitialization} className="w-full">
+                Retry Connection
+              </Button>
+              <Button 
+                onClick={() => window.location.reload()} 
+                variant="outline" 
+                className="w-full"
+              >
+                Refresh Page
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (authState === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -120,7 +260,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     );
   }
 
-  if (!isAuthenticated) {
+  // Unauthenticated state
+  if (authState === 'unauthenticated') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Card className="w-full max-w-md">
@@ -143,24 +284,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
             >
               Try Demo (Anonymous)
             </Button>
+            {error && (
+              <p className="text-red-500 text-sm text-center mt-2">{error}</p>
+            )}
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  // Authenticated state
   return (
     <div className="relative">
       <div className="absolute bottom-4 left-[80px] z-50">
-      <Button 
-  onClick={signOut} 
-  variant="destructive"
-  size="sm"
-  disabled={isSigningOut}
-  className="bg-red-500 hover:bg-red-600 text-white shadow-sm transition-colors"
->
-  {isSigningOut ? 'Signing Out...' : 'Sign Out'}
-</Button>
+        <Button 
+          onClick={signOut} 
+          variant="destructive"
+          size="sm"
+          disabled={isSigningOut}
+          className="bg-red-500 hover:bg-red-600 text-white shadow-sm transition-colors"
+        >
+          {isSigningOut ? 'Signing Out...' : 'Sign Out'}
+        </Button>
       </div>
       {children}
     </div>
