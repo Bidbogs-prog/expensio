@@ -28,17 +28,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full overflow-hidden">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full w-full`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full overflow-hidden`}
       >
         <AuthProvider>
           <SidebarProvider>
-            <AppSidebar />
-            <main className=" w-[100%] ">
-              <SidebarTrigger />
-              {children}
-            </main>
+            <div className="flex h-full w-full overflow-hidden">
+              <AppSidebar />
+              <main className="flex-1 overflow-auto">
+                <SidebarTrigger className="m-4" />
+                {children}
+              </main>
+            </div>
           </SidebarProvider>
         </AuthProvider>
       </body>
