@@ -44,7 +44,7 @@ export function IncomeForm() {
           <p className="text-sm text-muted-foreground">Record your income sources</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           <FormField
             control={form.control}
             name="category"
@@ -117,7 +117,7 @@ export function IncomeForm() {
         <div className="flex justify-end pt-2">
           <Button
             type="submit"
-            className="min-w-[140px] shadow-soft hover:shadow-medium transition-smooth gradient-primary text-white"
+            className="w-full sm:w-auto min-w-[140px] shadow-soft hover:shadow-medium transition-smooth gradient-primary text-white"
           >
             <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

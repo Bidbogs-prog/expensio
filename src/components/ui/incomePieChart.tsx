@@ -116,7 +116,7 @@ const IOChart = () => {
           </div>
         ) : (
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="99%" height="100%">
               <PieChart>
                 <Pie
                   data={chartData}
@@ -124,8 +124,8 @@ const IOChart = () => {
                   nameKey="category"
                   cx="50%"
                   cy="50%"
-                  innerRadius={70}
-                  outerRadius={100}
+                  innerRadius="40%"
+                  outerRadius="60%"
                   paddingAngle={2}
                   strokeWidth={2}
                   stroke="#fff"

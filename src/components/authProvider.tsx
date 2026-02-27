@@ -211,7 +211,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   if (authState === 'error') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-background to-orange-50">
-        <Card className="w-full max-w-md shadow-strong hover-lift border-red-200">
+        <Card className="w-full max-w-md mx-4 sm:mx-auto shadow-strong hover-lift border-red-200">
           <CardHeader className="text-center space-y-2 pb-4">
             <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-2">
               <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -267,7 +267,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-accent/30 rounded-full blur-3xl"></div>
         </div>
 
-        <Card className="w-full max-w-md shadow-strong hover-lift relative z-10 border-primary/20">
+        <Card className="w-full max-w-md mx-4 sm:mx-auto shadow-strong hover-lift relative z-10 border-primary/20">
           <CardHeader className="text-center space-y-3 pb-6">
             <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-primary flex items-center justify-center mb-2 shadow-medium">
               <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
