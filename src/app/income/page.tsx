@@ -15,11 +15,14 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 
-const categories = ["Freelance", "9 to 5", "Business", "Rent"] as const;
+const DEFAULT_CATEGORIES = ["Freelance", "9 to 5", "Business", "Rent"];
 
 export default function IncomePage() {
   const { currentIncome, currency, IncomeTotal, setCurrency, removeIncome, editIncome, isLoading } =
     useExpenseStore();
+
+  const existingCategories = [...new Set(currentIncome.map((i) => i.category))];
+  const allCategories = [...new Set([...DEFAULT_CATEGORIES, ...existingCategories])];
 
   const currencies = ["USD", "MAD", "EUR"] as const;
 
@@ -126,7 +129,7 @@ export default function IncomePage() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {categories.map((cat) => (
+                                {allCategories.map((cat) => (
                                   <SelectItem key={cat} value={cat}>
                                     {cat}
                                   </SelectItem>

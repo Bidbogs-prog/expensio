@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/table";
 import { useExpenseStore } from "@/useExpenseStore";
 
-const categories = ["food", "transport", "bills", "entertainment"] as const;
+const DEFAULT_CATEGORIES = ["food", "transport", "bills", "entertainment"];
 
 export default function ExpensesPage() {
   const {
@@ -36,6 +36,9 @@ export default function ExpensesPage() {
     isLoading,
     error
   } = useExpenseStore();
+
+  const existingCategories = [...new Set(expenses.map((e) => e.category))];
+  const allCategories = [...new Set([...DEFAULT_CATEGORIES, ...existingCategories])];
 
   const currencies = ["USD", "MAD", "EUR"] as const;
 
@@ -161,7 +164,7 @@ export default function ExpensesPage() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {categories.map((cat) => (
+                                {allCategories.map((cat) => (
                                   <SelectItem key={cat} value={cat}>
                                     {cat.charAt(0).toUpperCase() + cat.slice(1)}
                                   </SelectItem>
