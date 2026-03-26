@@ -25,6 +25,7 @@ interface ExpenseStore {
   removeExpense: (id: number) => Promise<void>;
   removeIncome: (id: number) => Promise<void>;
   editExpense: (id: number, values: ExpenseFormValues) => Promise<void>;
+  editIncome: (id: number, values: IncomeFormValues) => Promise<void>;
   setCurrency: (currency: string) => Promise<void>;
   
   // Internal helpers
@@ -252,7 +253,33 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     }
   },
 
-  // Set currency 
+  // Edit income
+  editIncome: async (id, values) => {
+    try {
+      set({ isLoading: true, error: null });
+
+      const updatedIncome = await withTimeout(incomeApi.update(id, {
+        category: values.category,
+        name: values.name,
+        amount: Number(values.amount)
+      }));
+
+      set((state) => ({
+        currentIncome: state.currentIncome.map(income =>
+          income.id === id ? updatedIncome : income
+        ),
+      }));
+
+      get().calculateTotals();
+    } catch (error) {
+      console.error('Error editing income:', error);
+      set({ error: error instanceof Error ? error.message : 'Failed to edit income' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Set currency
   setCurrency: async (currency) => {
     try {
       set({ isLoading: true, error: null });

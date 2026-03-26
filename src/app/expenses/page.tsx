@@ -1,9 +1,11 @@
 // src/app/expenses/page.tsx
 "use client";
 
+import { useState } from "react";
 import { ExpenseForm } from "@/components/ExpenseForm";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -21,6 +23,8 @@ import {
 } from "@/components/ui/table";
 import { useExpenseStore } from "@/useExpenseStore";
 
+const categories = ["food", "transport", "bills", "entertainment"] as const;
+
 export default function ExpensesPage() {
   const {
     expenses,
@@ -28,11 +32,37 @@ export default function ExpensesPage() {
     ExpenseTotal,
     setCurrency,
     removeExpense,
+    editExpense,
     isLoading,
     error
   } = useExpenseStore();
 
   const currencies = ["USD", "MAD", "EUR"] as const;
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editValues, setEditValues] = useState({ category: "", name: "", amount: "" });
+
+  const startEditing = (expense: { id?: number; category: string; name: string; amount: number }) => {
+    if (!expense.id) return;
+    setEditingId(expense.id);
+    setEditValues({
+      category: expense.category,
+      name: expense.name,
+      amount: String(expense.amount),
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditValues({ category: "", name: "", amount: "" });
+  };
+
+  const saveEdit = async () => {
+    if (!editingId || !editValues.name || !editValues.amount || !editValues.category) return;
+    await editExpense(editingId, editValues);
+    setEditingId(null);
+    setEditValues({ category: "", name: "", amount: "" });
+  };
 
   if (error) {
     return (
@@ -120,32 +150,108 @@ export default function ExpensesPage() {
                 <TableBody>
                   {expenses.map((expense) => (
                     <TableRow key={expense.id} className="hover:bg-muted/30 transition-colors">
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-primary"></div>
-                          {expense.category.charAt(0).toUpperCase() +
-                            expense.category.slice(1)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {expense.name.charAt(0).toUpperCase() + expense.name.slice(1)}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold text-purple-600">
-                        {expense.amount.toLocaleString()} {currency}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => expense.id && removeExpense(expense.id)}
-                          className="h-8 w-8 rounded-full p-0 shadow-soft hover:shadow-medium transition-smooth"
-                          disabled={isLoading}
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </Button>
-                      </TableCell>
+                      {editingId === expense.id ? (
+                        <>
+                          <TableCell>
+                            <Select
+                              value={editValues.category}
+                              onValueChange={(val) => setEditValues((prev) => ({ ...prev, category: val }))}
+                            >
+                              <SelectTrigger className="h-8 text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {categories.map((cat) => (
+                                  <SelectItem key={cat} value={cat}>
+                                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={editValues.name}
+                              onChange={(e) => setEditValues((prev) => ({ ...prev, name: e.target.value }))}
+                              className="h-8 text-sm"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              value={editValues.amount}
+                              onChange={(e) => setEditValues((prev) => ({ ...prev, amount: e.target.value }))}
+                              className="h-8 text-sm text-right"
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                size="sm"
+                                onClick={saveEdit}
+                                className="h-8 w-8 rounded-full p-0 shadow-soft"
+                                disabled={isLoading}
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={cancelEditing}
+                                className="h-8 w-8 rounded-full p-0"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-primary"></div>
+                              {expense.category.charAt(0).toUpperCase() +
+                                expense.category.slice(1)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {expense.name.charAt(0).toUpperCase() + expense.name.slice(1)}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-purple-600">
+                            {expense.amount.toLocaleString()} {currency}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => startEditing(expense)}
+                                className="h-8 w-8 rounded-full p-0 shadow-soft hover:shadow-medium transition-smooth"
+                                disabled={isLoading}
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => expense.id && removeExpense(expense.id)}
+                                className="h-8 w-8 rounded-full p-0 shadow-soft hover:shadow-medium transition-smooth"
+                                disabled={isLoading}
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </>
+                      )}
                     </TableRow>
                   ))}
 
