@@ -26,6 +26,8 @@ interface ExpenseStore {
   removeIncome: (id: number) => Promise<void>;
   editExpense: (id: number, values: ExpenseFormValues) => Promise<void>;
   editIncome: (id: number, values: IncomeFormValues) => Promise<void>;
+  renameExpenseCategory: (oldName: string, newName: string) => Promise<void>;
+  renameIncomeCategory: (oldName: string, newName: string) => Promise<void>;
   setCurrency: (currency: string) => Promise<void>;
   
   // Internal helpers
@@ -274,6 +276,70 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     } catch (error) {
       console.error('Error editing income:', error);
       set({ error: error instanceof Error ? error.message : 'Failed to edit income' });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Rename expense category (batch update all expenses with that category)
+  renameExpenseCategory: async (oldName, newName) => {
+    try {
+      set({ isLoading: true, error: null });
+      const { expenses } = get();
+      const toUpdate = expenses.filter((e) => e.category === oldName && e.id);
+
+      await Promise.all(
+        toUpdate.map((e) =>
+          withTimeout(
+            expensesApi.update(e.id!, {
+              category: newName,
+              name: e.name,
+              amount: e.amount,
+            })
+          )
+        )
+      );
+
+      set((state) => ({
+        expenses: state.expenses.map((e) =>
+          e.category === oldName ? { ...e, category: newName } : e
+        ),
+      }));
+    } catch (error) {
+      console.error("Error renaming expense category:", error);
+      set({ error: error instanceof Error ? error.message : "Failed to rename category" });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Rename income category (batch update all income with that category)
+  renameIncomeCategory: async (oldName, newName) => {
+    try {
+      set({ isLoading: true, error: null });
+      const { currentIncome } = get();
+      const toUpdate = currentIncome.filter((i) => i.category === oldName && i.id);
+
+      await Promise.all(
+        toUpdate.map((i) =>
+          withTimeout(
+            incomeApi.update(i.id!, {
+              category: newName,
+              name: i.name,
+              amount: i.amount,
+            })
+          )
+        )
+      );
+
+      set((state) => ({
+        currentIncome: state.currentIncome.map((i) =>
+          i.category === oldName ? { ...i, category: newName } : i
+        ),
+      }));
+    } catch (error) {
+      console.error("Error renaming income category:", error);
+      set({ error: error instanceof Error ? error.message : "Failed to rename category" });
     } finally {
       set({ isLoading: false });
     }
