@@ -30,7 +30,7 @@ export default function Home() {
     <QueryClientProvider client={queryClient}>
       <div className="w-full relative min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/20">
         {/* Header with Currency Selector */}
-        <div className="flex justify-between items-center gap-3 p-4 sm:p-6 pb-2">
+        <div className="flex justify-between items-center gap-3 pt-2">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
               Dashboard
@@ -54,7 +54,7 @@ export default function Home() {
         </div>
 
         {/* Stats Cards */}
-        <div className="dashboard grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
+        <div className="dashboard grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 pt-4 sm:p-6">
           {/* Balance Card */}
           <Card
             className={cn(
@@ -198,7 +198,7 @@ export default function Home() {
           <h2 className="text-xl font-semibold mb-4 text-foreground">
             Financial Breakdown
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             <OChart />
             <IOChart />
           </div>

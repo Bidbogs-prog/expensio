@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useExpenseStore } from '@/useExpenseStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Image from 'next/image';
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -269,10 +270,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         <Card className="w-full max-w-md mx-4 sm:mx-auto shadow-strong hover-lift relative z-10 border-primary/20">
           <CardHeader className="text-center space-y-3 pb-6">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-primary flex items-center justify-center mb-2 shadow-medium">
-              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            <div className="mx-auto w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center mb-2">
+              <Image src={'/expensio.png'} alt="Expensio Logo" width={64} height={64} />
+
             </div>
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
               Welcome to Expensio
