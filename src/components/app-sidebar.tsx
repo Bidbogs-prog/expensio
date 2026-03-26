@@ -169,10 +169,9 @@ export function AppSidebar() {
         <div className="mt-auto px-3 pb-4">
           <Button
             onClick={signOut}
-            variant="destructive"
             size="sm"
             disabled={isSigningOut}
-            className="w-full shadow-soft hover:shadow-medium transition-smooth"
+            className="w-full gradient-primary text-white border-0 shadow-soft hover:shadow-medium transition-smooth"
           >
             {isSigningOut ? (
               <>
