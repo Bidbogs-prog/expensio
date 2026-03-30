@@ -34,12 +34,10 @@ export default function RootLayout({
       >
         <AuthProvider>
           <SidebarProvider>
-            <div className="flex h-full w-full ">
+            <div className="flex h-full w-full">
               <AppSidebar />
-               <SidebarTrigger className="m-4" />
-
-              <main className="flex-1 overflow-auto">
-                
+              <main className="flex-1 overflow-auto relative">
+                <SidebarTrigger className="absolute top-4 left-4 z-10" />
                 {children}
               </main>
             </div>

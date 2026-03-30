@@ -6,29 +6,5 @@ const supabaseAnonKey =
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Database types
-export interface Expense {
-  id?: number;
-  category: string;
-  name: string;
-  amount: number;
-  created_at?: string;
-  user_id?: string;
-}
-
-export interface Income {
-  id?: number;
-  category: string;
-  name: string;
-  amount: number;
-  created_at?: string;
-  user_id?: string;
-}
-
-export interface UserSettings {
-  id?: number;
-  user_id: string;
-  currency: string;
-  created_at?: string;
-  updated_at?: string;
-}
+// All types are defined in @/types — re-exported here for backwards compatibility.
+export type { Expense, Income, UserSettings, Currency } from "@/types";

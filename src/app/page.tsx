@@ -31,7 +31,7 @@ export default function Home() {
       <div className="w-full relative min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/20">
         {/* Header with Currency Selector */}
         <div className="flex justify-between items-center gap-3 pt-2">
-          <div>
+          <div className="ml-14">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
               Dashboard
             </h1>
@@ -40,7 +40,7 @@ export default function Home() {
             </p>
           </div>
           <Select onValueChange={setCurrency} value={currency}>
-            <SelectTrigger className="w-[100px] shadow-soft">
+            <SelectTrigger className="w-[100px] mr-10 shadow-soft">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

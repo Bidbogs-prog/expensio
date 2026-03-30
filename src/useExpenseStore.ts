@@ -1,14 +1,13 @@
 // src/useExpenseStore.ts
 import { create } from "zustand";
 import { expensesApi, incomeApi, userSettingsApi } from "./lib/api";
-import { type Expense, type Income } from "./lib/supabase";
-import { type ExpenseFormValues, type IncomeFormValues } from "./form-schemas";
+import type { Expense, Income, Currency, ExpenseFormValues, IncomeFormValues } from "@/types";
 
 interface ExpenseStore {
   // State
   currentIncome: Income[];
   expenses: Expense[];
-  currency: string;
+  currency: Currency;
   isLoading: boolean;
   error: string | null;
 
@@ -28,7 +27,7 @@ interface ExpenseStore {
   editIncome: (id: number, values: IncomeFormValues) => Promise<void>;
   renameExpenseCategory: (oldName: string, newName: string) => Promise<void>;
   renameIncomeCategory: (oldName: string, newName: string) => Promise<void>;
-  setCurrency: (currency: string) => Promise<void>;
+  setCurrency: (currency: Currency) => Promise<void>;
   
   // Internal helpers
   calculateTotals: () => void;

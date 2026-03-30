@@ -1,5 +1,6 @@
 // src/lib/api.ts
-import { supabase, type Expense, type Income, type UserSettings } from './supabase'
+import { supabase } from './supabase'
+import type { Expense, Income, UserSettings } from '@/types'
 
 // Auth helper to ensure we have a valid session
 async function ensureAuthenticated() {
