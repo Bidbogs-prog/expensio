@@ -166,6 +166,9 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
 
   // Add expense
   addExpense: async (values) => {
+
+
+    
     try {
       set({ isLoading: true, error: null });
       
@@ -188,41 +191,46 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     }
   },
 
-  // Remove expense
   removeExpense: async (id) => {
-    try {
-      set({ isLoading: true, error: null });
-      
-      await withTimeout(expensesApi.delete(id));
+  // 1. Save current state for rollback
+  const previousExpenses = get().expenses;
 
-      set((state) => ({
-        expenses: state.expenses.filter(expense => expense.id !== id),
-      }));
+  // 2. Optimistically remove from UI immediately
+  set((state) => ({
+    expenses: state.expenses.filter(e => e.id !== id),
+  }));
+  get().calculateTotals();
 
-      get().calculateTotals();
-    } catch (error) {
-      console.error('Error removing expense:', error);
-      set({ error: error instanceof Error ? error.message : 'Failed to remove expense' });
-    } finally {
-      set({ isLoading: false });
-    }
-  },
+  // 3. Try the API call
+  try {
+    await expensesApi.delete(id);
+  } catch (error) {
+    // 4. Rollback on failure
+    set({ expenses: previousExpenses });
+    get().calculateTotals();
+    set({ error: 'Failed to delete expense. Changes reverted.' });
+  }
+},
 
   // Remove income
   removeIncome: async (id) => {
-    try {
-      set({ isLoading: true, error: null });
-      
-      await withTimeout(incomeApi.delete(id));
 
-      set((state) => ({
+    const previousIncome = get().currentIncome;
+
+    set((state) => ({
         currentIncome: state.currentIncome.filter(income => income.id !== id),
       }));
+    
+    get().calculateTotals();
 
-      get().calculateTotals();
+    try {
+      set({ isLoading: true, error: null });
+      await withTimeout(incomeApi.delete(id));
+
     } catch (error) {
-      console.error('Error removing income:', error);
-      set({ error: error instanceof Error ? error.message : 'Failed to remove income' });
+      set({ currentIncome: previousIncome });
+      get().calculateTotals();
+      set({ error: 'Failed to delete income. Changes reverted.' });
     } finally {
       set({ isLoading: false });
     }

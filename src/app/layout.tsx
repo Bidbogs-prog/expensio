@@ -5,6 +5,7 @@ import "./globals.css";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AuthProvider } from "@/components/authProvider";
+import { Card } from "@/components/ui/card";
 
 
 const geistSans = Geist({
@@ -34,7 +35,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           <SidebarProvider>
-            <div className="flex h-full w-full">
+              <div className="flex h-full w-full">
               <AppSidebar />
               <main className="flex-1 overflow-auto relative">
                 <SidebarTrigger className="absolute top-4 left-4 z-10" />
