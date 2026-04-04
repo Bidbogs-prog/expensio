@@ -27,28 +27,29 @@ export default function IncomePage() {
   const currencies = ["USD", "MAD", "EUR"] as const;
 
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editValues, setEditValues] = useState({ category: "", name: "", amount: "" });
+  const [editValues, setEditValues] = useState({ category: "", name: "", amount: "", date: "" });
 
-  const startEditing = (income: { id?: number; category: string; name: string; amount: number }) => {
+  const startEditing = (income: { id?: number; category: string; name: string; amount: number; date: string }) => {
     if (!income.id) return;
     setEditingId(income.id);
     setEditValues({
       category: income.category,
       name: income.name,
       amount: String(income.amount),
+      date: income.date ? income.date.split("T")[0] : new Date().toISOString().split("T")[0],
     });
   };
 
   const cancelEditing = () => {
     setEditingId(null);
-    setEditValues({ category: "", name: "", amount: "" });
+    setEditValues({ category: "", name: "", amount: "", date: "" });
   };
 
   const saveEdit = async () => {
     if (!editingId || !editValues.name || !editValues.amount || !editValues.category) return;
     await editIncome(editingId, editValues);
     setEditingId(null);
-    setEditValues({ category: "", name: "", amount: "" });
+    setEditValues({ category: "", name: "", amount: "", date: "" });
   };
 
   return (
@@ -109,9 +110,10 @@ export default function IncomePage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="w-[25%] font-semibold">Category</TableHead>
-                    <TableHead className="w-[35%] font-semibold">Source</TableHead>
-                    <TableHead className="w-[25%] text-right font-semibold">Amount</TableHead>
+                    <TableHead className="w-[20%] font-semibold">Category</TableHead>
+                    <TableHead className="w-[25%] font-semibold">Source</TableHead>
+                    <TableHead className="w-[20%] font-semibold">Date</TableHead>
+                    <TableHead className="w-[20%] text-right font-semibold">Amount</TableHead>
                     <TableHead className="w-[15%] text-center font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -141,6 +143,14 @@ export default function IncomePage() {
                             <Input
                               value={editValues.name}
                               onChange={(e) => setEditValues((prev) => ({ ...prev, name: e.target.value }))}
+                              className="h-8 text-sm"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="date"
+                              value={editValues.date}
+                              onChange={(e) => setEditValues((prev) => ({ ...prev, date: e.target.value }))}
                               className="h-8 text-sm"
                             />
                           </TableCell>
@@ -189,6 +199,11 @@ export default function IncomePage() {
                           <TableCell>
                             {income.name.charAt(0).toUpperCase() + income.name.slice(1)}
                           </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {income.date
+                              ? new Date(income.date).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+                              : "—"}
+                          </TableCell>
                           <TableCell className="text-right font-semibold text-blue-600">
                             {income.amount.toLocaleString()} {currency}
                           </TableCell>
@@ -226,7 +241,7 @@ export default function IncomePage() {
                   {/* Total row */}
                   {currentIncome.length > 0 && (
                     <TableRow className="bg-gradient-to-r from-blue-50 to-cyan-100/50 border-t-2 border-blue-200">
-                      <TableCell colSpan={2} className="font-bold text-base sm:text-lg">
+                      <TableCell colSpan={3} className="font-bold text-base sm:text-lg">
                         Total Income
                       </TableCell>
                       <TableCell className="text-right font-bold text-base sm:text-lg text-blue-600">

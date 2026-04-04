@@ -49,6 +49,7 @@ export function ExpenseForm() {
       category: "",
       name: "",
       amount: "",
+      date: new Date().toISOString().split("T")[0],
     } as ExpenseFormValues,
   });
 
@@ -197,7 +198,7 @@ export function ExpenseForm() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <FormField
             control={form.control}
             name="category"
@@ -296,6 +297,24 @@ export function ExpenseForm() {
                     placeholder="0"
                     onWheel={(e) => e.currentTarget.blur()}
                     className="shadow-soft [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-smooth focus:shadow-medium"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm font-medium">Date</FormLabel>
+                <FormControl>
+                  <Input
+                    type="date"
+                    className="shadow-soft transition-smooth focus:shadow-medium"
                     {...field}
                   />
                 </FormControl>

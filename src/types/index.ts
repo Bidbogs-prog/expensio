@@ -5,12 +5,13 @@ export type Currency = "USD" | "MAD" | "EUR";
 
 // ── Database models ───────────────────────────────────────────────────────────
 export interface Transaction {
-  id?: number 
-  user_id?: string;
+  id: number 
+  user_id: string;
   category: string;
   name: string;
   amount: number;
   created_at?: string;
+  date: string
 }
 
 export interface Expense extends Transaction {}

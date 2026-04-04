@@ -35,32 +35,6 @@ interface ExpenseStore {
   setError: (error: string | null) => void;
 }
 
-// Helper function to add timeout to API calls
-const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
-    )
-  ]);
-};
-
-// Helper function to safely execute API calls with fallbacks
-const safeApiCall = async <T>(
-  apiCall: () => Promise<T>, 
-  fallbackValue: T, 
-  operationName: string
-): Promise<T> => {
-  try {
-    console.log(`Starting ${operationName}...`);
-    const result = await withTimeout(apiCall(), 8000);
-    console.log(`${operationName} completed successfully`);
-    return result;
-  } catch (error) {
-    console.error(`${operationName} failed:`, error);
-    return fallbackValue;
-  }
-};
 
 export const useExpenseStore = create<ExpenseStore>((set, get) => ({
   // Initial state
@@ -81,9 +55,9 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
       
       // Load data with individual error handling and timeouts
       const [expenses, income, settings] = await Promise.allSettled([
-        safeApiCall(() => expensesApi.getAll(), [], 'Loading expenses'),
-        safeApiCall(() => incomeApi.getAll(), [], 'Loading income'),
-        safeApiCall(() => userSettingsApi.get(), null, 'Loading settings')
+        expensesApi.getAll(),
+        incomeApi.getAll(),
+        userSettingsApi.get()
       ]);
 
       // Extract results, using fallback values for failed calls
@@ -142,53 +116,86 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
 
   // Add income
   addIncome: async (values) => {
-    try {
-      set({ isLoading: true, error: null });
-      
-      const newIncome = await withTimeout(incomeApi.create({
+    const prevIncome = get().currentIncome;
+    const tempIncome: Income = {
+      id: -1,
+      category: values.category,
+      name: values.name,
+      amount: Number(values.amount),
+      user_id: '',
+      created_at: new Date().toISOString(),
+      date: values.date
+    }
+    
+    set((state)=> ({currentIncome: [tempIncome, ...state.currentIncome]}))
+    get().calculateTotals();
+    
+    try {      
+      const newIncome = await incomeApi.create({
         category: values.category,
         name: values.name,
-        amount: Number(values.amount)
-      }));
+        amount: Number(values.amount),
+        date: new Date().toISOString(),
+      });
 
       set((state) => ({
-        currentIncome: [newIncome, ...state.currentIncome],
+        currentIncome: state.currentIncome.map((i) => i.id === -1 ? newIncome : i),
       }));
 
       get().calculateTotals();
     } catch (error) {
+      set({ currentIncome: prevIncome, error: error instanceof Error ? error.message : 'Failed to add income' });
+      get().calculateTotals();
       console.error('Error adding income:', error);
-      set({ error: error instanceof Error ? error.message : 'Failed to add income' });
-    } finally {
-      set({ isLoading: false });
-    }
+      setTimeout(() => set({ error: null }), 4000);
+    } 
   },
+
+
 
   // Add expense
   addExpense: async (values) => {
 
+    const prevExpenses = get().expenses;
 
+    const tempExpense: Expense = {
+      id: -1, // Temporary ID for optimistic UI
+      category: values.category,
+      name: values.name,
+      amount: Number(values.amount),
+      user_id: '',
+      created_at: new Date().toISOString(),
+      date: values.date
+    }; 
     
-    try {
-      set({ isLoading: true, error: null });
-      
-      const newExpense = await withTimeout(expensesApi.create({
-        category: values.category,
-        name: values.name,
-        amount: Number(values.amount)
+    set((state) => ({
+        expenses: [tempExpense, ...state.expenses],
       }));
 
+    get().calculateTotals();
+    try {
+      const newExpense = await expensesApi.create({
+        category: values.category,
+        name: values.name,
+        amount: Number(values.amount),
+        date: new Date().toISOString(),
+
+      });
+
       set((state) => ({
-        expenses: [newExpense, ...state.expenses],
+        expenses: state.expenses.map((e) => e.id === -1 ? newExpense : e)
       }));
 
       get().calculateTotals();
+
+
     } catch (error) {
+      set({ expenses: prevExpenses, error: error instanceof Error ? error.message : 'Failed to add expense' });
+      get().calculateTotals();
       console.error('Error adding expense:', error);
-      set({ error: error instanceof Error ? error.message : 'Failed to add expense' });
-    } finally {
-      set({ isLoading: false });
-    }
+      setTimeout(() => set({ error: null }), 4000);
+
+    } 
   },
 
   removeExpense: async (id) => {
@@ -224,8 +231,7 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     get().calculateTotals();
 
     try {
-      set({ isLoading: true, error: null });
-      await withTimeout(incomeApi.delete(id));
+      await incomeApi.delete(id);
 
     } catch (error) {
       set({ currentIncome: previousIncome });
@@ -237,55 +243,61 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
   },
 
   // Edit expense
-  editExpense: async (id, values) => {
-    try {
-      set({ isLoading: true, error: null });
-      
-      const updatedExpense = await withTimeout(expensesApi.update(id, {
-        category: values.category,
-        name: values.name,
-        amount: Number(values.amount)
-      }));
+ editExpense: async (id, values) => {
+  const prevExpenses = get().expenses;
 
-      set((state) => ({
-        expenses: state.expenses.map(expense => 
-          expense.id === id ? updatedExpense : expense
-        ),
-      }));
+  // Optimistically update in place
+  set((state) => ({
+    expenses: state.expenses.map((e) =>
+      e.id === id
+        ? { ...e, ...values, amount: Number(values.amount) }
+        : e
+    ),
+  }));
+  get().calculateTotals();
 
-      get().calculateTotals();
-    } catch (error) {
-      console.error('Error editing expense:', error);
-      set({ error: error instanceof Error ? error.message : 'Failed to edit expense' });
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-
+  try {
+    await expensesApi.update(id, {
+      category: values.category,
+      name: values.name,
+      amount: Number(values.amount),
+      date: values.date,
+    });
+  } catch (error) {
+    set({ expenses: prevExpenses, error: error instanceof Error ? error.message : 'Failed to update expense.' });
+    get().calculateTotals();
+    setTimeout(() => set({ error: null }), 4000);
+  }
+},
   // Edit income
   editIncome: async (id, values) => {
-    try {
-      set({ isLoading: true, error: null });
+    
+    const prevIncome = get().currentIncome;
 
-      const updatedIncome = await withTimeout(incomeApi.update(id, {
+     // Optimistically update in place
+  set((state) => ({
+    currentIncome: state.currentIncome.map((i) =>
+      i.id === id
+        ? { ...i, ...values, amount: Number(values.amount) }
+        : i
+    ),
+  }));
+  get().calculateTotals();
+    
+    
+    try {
+       await incomeApi.update(id, {
         category: values.category,
         name: values.name,
-        amount: Number(values.amount)
-      }));
+        amount: Number(values.amount),
+        date: values.date,
+      });
 
-      set((state) => ({
-        currentIncome: state.currentIncome.map(income =>
-          income.id === id ? updatedIncome : income
-        ),
-      }));
 
-      get().calculateTotals();
     } catch (error) {
       console.error('Error editing income:', error);
-      set({ error: error instanceof Error ? error.message : 'Failed to edit income' });
-    } finally {
-      set({ isLoading: false });
-    }
+      set({ currentIncome: prevIncome, error: error instanceof Error ? error.message : 'Failed to edit income' });
+    } 
   },
 
   // Rename expense category (batch update all expenses with that category)
@@ -297,13 +309,14 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
 
       await Promise.all(
         toUpdate.map((e) =>
-          withTimeout(
+          
             expensesApi.update(e.id!, {
               category: newName,
               name: e.name,
               amount: e.amount,
+              date: e.date,
             })
-          )
+          
         )
       );
 
@@ -329,13 +342,14 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
 
       await Promise.all(
         toUpdate.map((i) =>
-          withTimeout(
+         
             incomeApi.update(i.id!, {
               category: newName,
               name: i.name,
               amount: i.amount,
+              date: i.date,
             })
-          )
+          
         )
       );
 
@@ -359,7 +373,7 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
       
       console.log('Setting currency to:', currency);
       
-      const result = await withTimeout(userSettingsApi.upsert({ currency }));
+      const result = await userSettingsApi.upsert({ currency });
       console.log('Currency update result:', result);
       
       set({ currency });

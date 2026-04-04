@@ -43,28 +43,29 @@ export default function ExpensesPage() {
   const currencies = ["USD", "MAD", "EUR"] as const;
 
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editValues, setEditValues] = useState({ category: "", name: "", amount: "" });
+  const [editValues, setEditValues] = useState({ category: "", name: "", amount: "", date: "" });
 
-  const startEditing = (expense: { id?: number; category: string; name: string; amount: number }) => {
+  const startEditing = (expense: { id?: number; category: string; name: string; amount: number; date: string }) => {
     if (!expense.id) return;
     setEditingId(expense.id);
     setEditValues({
       category: expense.category,
       name: expense.name,
       amount: String(expense.amount),
+      date: expense.date ? expense.date.split("T")[0] : new Date().toISOString().split("T")[0],
     });
   };
 
   const cancelEditing = () => {
     setEditingId(null);
-    setEditValues({ category: "", name: "", amount: "" });
+    setEditValues({ category: "", name: "", amount: "", date: "" });
   };
 
   const saveEdit = async () => {
     if (!editingId || !editValues.name || !editValues.amount || !editValues.category) return;
     await editExpense(editingId, editValues);
     setEditingId(null);
-    setEditValues({ category: "", name: "", amount: "" });
+    setEditValues({ category: "", name: "", amount: "", date: "" });
   };
 
   if (error) {
@@ -144,9 +145,10 @@ export default function ExpensesPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="w-[25%] font-semibold">Category</TableHead>
-                    <TableHead className="w-[35%] font-semibold">Item</TableHead>
-                    <TableHead className="w-[25%] text-right font-semibold">Amount</TableHead>
+                    <TableHead className="w-[20%] font-semibold">Category</TableHead>
+                    <TableHead className="w-[25%] font-semibold">Item</TableHead>
+                    <TableHead className="w-[20%] font-semibold">Date</TableHead>
+                    <TableHead className="w-[20%] text-right font-semibold">Amount</TableHead>
                     <TableHead className="w-[15%] text-center font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -176,6 +178,14 @@ export default function ExpensesPage() {
                             <Input
                               value={editValues.name}
                               onChange={(e) => setEditValues((prev) => ({ ...prev, name: e.target.value }))}
+                              className="h-8 text-sm"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="date"
+                              value={editValues.date}
+                              onChange={(e) => setEditValues((prev) => ({ ...prev, date: e.target.value }))}
                               className="h-8 text-sm"
                             />
                           </TableCell>
@@ -224,6 +234,11 @@ export default function ExpensesPage() {
                           <TableCell>
                             {expense.name.charAt(0).toUpperCase() + expense.name.slice(1)}
                           </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {expense.date
+                              ? new Date(expense.date).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+                              : "—"}
+                          </TableCell>
                           <TableCell className="text-right font-semibold text-purple-600">
                             {expense.amount.toLocaleString()} {currency}
                           </TableCell>
@@ -261,7 +276,7 @@ export default function ExpensesPage() {
                   {/* Total row */}
                   {expenses.length > 0 && (
                     <TableRow className="bg-gradient-to-r from-purple-50 to-violet-100/50 border-t-2 border-purple-200">
-                      <TableCell colSpan={2} className="font-bold text-base sm:text-lg">
+                      <TableCell colSpan={3} className="font-bold text-base sm:text-lg">
                         Total Expenses
                       </TableCell>
                       <TableCell className="text-right font-bold text-base sm:text-lg text-purple-600">

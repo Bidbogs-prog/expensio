@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { date, z } from "zod";
 
 export const incomeFormSchema = z.object({
   category: z.string({
@@ -12,6 +12,10 @@ export const incomeFormSchema = z.object({
     .string()
     .min(1, "Amount is required")
     .regex(/^\d+$/, "Must be a valid number"),
+  date: z.string().refine((val) => {
+    const parsedDate = Date.parse(val);
+    return !isNaN(parsedDate);
+  }, "Must be a valid date"),
 });
 
 export const expenseFormSchema = z.object({
@@ -26,6 +30,10 @@ export const expenseFormSchema = z.object({
     .string()
     .min(1, "Amount is required")
     .regex(/^\d+$/, "Must be a valid number"),
+  date: z.string().refine((val) => {
+    const parsedDate = Date.parse(val);
+    return !isNaN(parsedDate);
+  }, "Must be a valid date"),
 });
 
 export type IncomeFormValues = z.infer<typeof incomeFormSchema>;
