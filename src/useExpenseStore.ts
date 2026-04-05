@@ -65,16 +65,6 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
       const incomeResult = income.status === 'fulfilled' ? income.value : [];
       const settingsResult = settings.status === 'fulfilled' ? settings.value : null;
 
-      // Log any failures for debugging
-      if (expenses.status === 'rejected') {
-        console.error('Failed to load expenses:', expenses.reason);
-      }
-      if (income.status === 'rejected') {
-        console.error('Failed to load income:', income.reason);
-      }
-      if (settings.status === 'rejected') {
-        console.error('Failed to load settings:', settings.reason);
-      }
 
       console.log('Data loaded:', {
         expenses: expensesResult.length,
@@ -300,70 +290,69 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     } 
   },
 
-  // Rename expense category (batch update all expenses with that category)
   renameExpenseCategory: async (oldName, newName) => {
-    try {
-      set({ isLoading: true, error: null });
-      const { expenses } = get();
-      const toUpdate = expenses.filter((e) => e.category === oldName && e.id);
+  const prevExpenses = get().expenses;
 
-      await Promise.all(
-        toUpdate.map((e) =>
-          
-            expensesApi.update(e.id!, {
-              category: newName,
-              name: e.name,
-              amount: e.amount,
-              date: e.date,
-            })
-          
-        )
-      );
+  // Optimistically rename in UI immediately
+  set((state) => ({
+    expenses: state.expenses.map((e) =>
+      e.category === oldName ? { ...e, category: newName } : e
+    ),
+  }));
 
-      set((state) => ({
-        expenses: state.expenses.map((e) =>
-          e.category === oldName ? { ...e, category: newName } : e
-        ),
-      }));
-    } catch (error) {
-      console.error("Error renaming expense category:", error);
-      set({ error: error instanceof Error ? error.message : "Failed to rename category" });
-    } finally {
-      set({ isLoading: false });
-    }
-  },
+  try {
+    const toUpdate = prevExpenses.filter((e) => e.category === oldName);
+
+    await Promise.all(
+      toUpdate.map((e) =>
+        expensesApi.update(e.id, {
+          category: newName,
+          name: e.name,
+          amount: e.amount,
+          date: e.date,
+        })
+      )
+    );
+  } catch (error) {
+    set({
+      expenses: prevExpenses,
+      error: error instanceof Error ? error.message : 'Failed to rename category.',
+    });
+    setTimeout(() => set({ error: null }), 4000);
+  }
+},
 
   // Rename income category (batch update all income with that category)
   renameIncomeCategory: async (oldName, newName) => {
-    try {
-      set({ isLoading: true, error: null });
-      const { currentIncome } = get();
-      const toUpdate = currentIncome.filter((i) => i.category === oldName && i.id);
+  const prevIncome = get().currentIncome;
 
-      await Promise.all(
-        toUpdate.map((i) =>
-         
-            incomeApi.update(i.id!, {
-              category: newName,
-              name: i.name,
-              amount: i.amount,
-              date: i.date,
-            })
-          
-        )
-      );
+  // Optimistically rename in UI immediately
+  set((state) => ({
+    currentIncome: state.currentIncome.map((i) =>
+      i.category === oldName ? { ...i, category: newName } : i
+    ),
+  }));
 
-      set((state) => ({
-        currentIncome: state.currentIncome.map((i) =>
-          i.category === oldName ? { ...i, category: newName } : i
-        ),
-      }));
-    } catch (error) {
-      console.error("Error renaming income category:", error);
-      set({ error: error instanceof Error ? error.message : "Failed to rename category" });
-    } finally {
-      set({ isLoading: false });
-    }
+  try {
+    const toUpdate = prevIncome.filter((i) => i.category === oldName);
+
+    await Promise.all(
+      toUpdate.map((i) =>
+        incomeApi.update(i.id, {
+          category: newName,
+          name: i.name,
+          amount: i.amount,
+          date: i.date,
+        })
+      )
+    );
+  } catch (error) {
+    set({
+      currentIncome: prevIncome,
+      error: error instanceof Error ? error.message : 'Failed to rename category.',
+    });
+    setTimeout(() => set({ error: null }), 4000);
+  }
   },
 
   // Set currency
