@@ -14,14 +14,17 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { MonthNavigator } from "@/components/monthNavigator";
 
 const DEFAULT_CATEGORIES = ["Freelance", "9 to 5", "Business", "Rent"];
 
 export default function IncomePage() {
-  const { currentIncome, currency, IncomeTotal, setCurrency, removeIncome, editIncome, isLoading } =
+  const { currentIncome, currency, IncomeTotal, setCurrency, removeIncome, editIncome, isLoading, getFilteredIncome } =
     useExpenseStore();
 
-  const existingCategories = [...new Set(currentIncome.map((i) => i.category))];
+  const filteredIncome = getFilteredIncome(); 
+
+  const existingCategories = [...new Set(filteredIncome.map((i) => i.category))];
   const allCategories = [...new Set([...DEFAULT_CATEGORIES, ...existingCategories])];
 
   const currencies = ["USD", "MAD", "EUR"] as const;
@@ -79,6 +82,12 @@ export default function IncomePage() {
           </Select>
         </div>
 
+                 {/* Month Navigator */}
+        <div className="flex justify-center py-4 px-6">
+          <MonthNavigator />
+        </div>
+        
+
         {/* Income Form */}
         <Card className="mb-6 sm:mb-8 shadow-soft hover-lift p-4 sm:p-6">
           <IncomeForm />
@@ -95,7 +104,7 @@ export default function IncomePage() {
             </div>
           )}
 
-          {currentIncome.length === 0 && !isLoading ? (
+          {filteredIncome.length === 0 && !isLoading ? (
             <div className="p-8 sm:p-12 text-center">
               <div className="mx-auto w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -118,7 +127,7 @@ export default function IncomePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentIncome.map((income) => (
+                  {filteredIncome.map((income) => (
                     <TableRow key={income.id} className="hover:bg-muted/30 transition-colors">
                       {editingId === income.id ? (
                         <>
