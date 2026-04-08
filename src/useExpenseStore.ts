@@ -358,7 +358,6 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
   // Set currency
   setCurrency: async (currency) => {
     try {
-      set({ isLoading: true, error: null });
       
       console.log('Setting currency to:', currency);
       
@@ -376,9 +375,7 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
           : 'Failed to update currency - Unknown error';
           
       set({ error: errorMessage });
-    } finally {
-      set({ isLoading: false });
-    }
+    } 
   },
 
   // Calculate totals and broke status

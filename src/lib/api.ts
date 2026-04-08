@@ -7,6 +7,7 @@ async function ensureAuthenticated() {
   // First check if we have a session
   const { data: { session }, error: sessionError } = await supabase.auth.getSession()
   
+  
   if (sessionError) {
     console.error('Session error:', sessionError)
     throw new Error('Failed to verify authentication')
@@ -18,6 +19,7 @@ async function ensureAuthenticated() {
 
   // Double-check with getUser for additional validation
   const { data: { user }, error: userError } = await supabase.auth.getUser()
+
   
   if (userError) {
     console.error('User validation error:', userError)

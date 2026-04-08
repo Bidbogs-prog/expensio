@@ -17,7 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import OChart from "@/components/ui/expensesPieChart";
 import IOChart from "@/components/ui/incomePieChart";
-import { CrashTest } from "@/components/crashtest";
 
 export default function Home() {
   const { currency, ExpenseTotal, IncomeTotal, isBroke, setCurrency } =
