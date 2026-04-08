@@ -17,11 +17,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import OChart from "@/components/ui/expensesPieChart";
 import IOChart from "@/components/ui/incomePieChart";
+import { MonthNavigator } from "@/components/monthNavigator";
+
+const queryClient = new QueryClient();
+
 
 export default function Home() {
   const { currency, ExpenseTotal, IncomeTotal, isBroke, setCurrency } =
     useExpenseStore();
-  const queryClient = new QueryClient();
   const currencies = ["USD", "MAD", "EUR"] as const;
 
   const balance = IncomeTotal - ExpenseTotal;
@@ -52,6 +55,11 @@ export default function Home() {
             </SelectContent>
           </Select>
         </div>
+
+          {/* Month Navigator */}
+  <div className="flex justify-center py-4 px-6">
+    <MonthNavigator />
+  </div>
 
         {/* Stats Cards */}
         <div className="dashboard grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 pt-4 sm:p-6">

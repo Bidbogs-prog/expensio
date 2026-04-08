@@ -10,6 +10,7 @@ interface ExpenseStore {
   currency: Currency;
   isLoading: boolean;
   error: string | null;
+  currentMonth: string;
 
   // Computed values
   ExpenseTotal: number;
@@ -28,6 +29,9 @@ interface ExpenseStore {
   renameExpenseCategory: (oldName: string, newName: string) => Promise<void>;
   renameIncomeCategory: (oldName: string, newName: string) => Promise<void>;
   setCurrency: (currency: Currency) => Promise<void>;
+  setCurrentMonth: (month: string) => void;
+  getFilteredExpenses: () => Expense[];
+  getFilteredIncome: () => Income[];
   
   // Internal helpers
   calculateTotals: () => void;
@@ -46,6 +50,8 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
   ExpenseTotal: 0,
   IncomeTotal: 0,
   isBroke: false,
+  currentMonth: new Date().toISOString().slice(0, 7), // "2026-04"
+
 
   // Initialize data from Supabase with better error handling
   initializeData: async () => {
@@ -90,6 +96,21 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     }
   },
 
+  setCurrentMonth: (month) => {
+  set({ currentMonth: month });
+  get().calculateTotals();
+},
+
+getFilteredExpenses: () => {
+  const { expenses, currentMonth } = get();
+  return expenses.filter((e) => e.date.startsWith(currentMonth));
+},
+
+getFilteredIncome: () => {
+  const { currentIncome, currentMonth } = get();
+  return currentIncome.filter((i) => i.date.startsWith(currentMonth));
+},
+
   clearData: async () => {
     console.log('Clearing all data...');
     set({
@@ -125,7 +146,7 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
         category: values.category,
         name: values.name,
         amount: Number(values.amount),
-        date: new Date().toISOString(),
+        date: values.date,
       });
 
       set((state) => ({
@@ -168,7 +189,7 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
         category: values.category,
         name: values.name,
         amount: Number(values.amount),
-        date: new Date().toISOString(),
+        date: values.date,
 
       });
 
@@ -203,9 +224,8 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     await expensesApi.delete(id);
   } catch (error) {
     // 4. Rollback on failure
-    set({ expenses: previousExpenses });
+    set({ expenses: previousExpenses, error: 'Failed to delete expense. Changes reverted.' });
     get().calculateTotals();
-    set({ error: 'Failed to delete expense. Changes reverted.' });
   }
 },
 
@@ -224,16 +244,13 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
       await incomeApi.delete(id);
 
     } catch (error) {
-      set({ currentIncome: previousIncome });
+      set({ currentIncome: previousIncome, error: 'Failed to delete income. Changes reverted.' });
       get().calculateTotals();
-      set({ error: 'Failed to delete income. Changes reverted.' });
-    } finally {
-      set({ isLoading: false });
-    }
+    } 
   },
 
   // Edit expense
- editExpense: async (id, values) => {
+  editExpense: async (id, values) => {
   const prevExpenses = get().expenses;
 
   // Optimistically update in place
@@ -287,6 +304,7 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     } catch (error) {
       console.error('Error editing income:', error);
       set({ currentIncome: prevIncome, error: error instanceof Error ? error.message : 'Failed to edit income' });
+      setTimeout(() => set({ error: null }), 4000);
     } 
   },
 
@@ -378,16 +396,16 @@ export const useExpenseStore = create<ExpenseStore>((set, get) => ({
     } 
   },
 
-  // Calculate totals and broke status
   calculateTotals: () => {
-    const { expenses, currentIncome } = get();
-    
-    const ExpenseTotal = expenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
-    const IncomeTotal = currentIncome.reduce((sum, income) => sum + Number(income.amount), 0);
-    const isBroke = IncomeTotal < ExpenseTotal;
+  const filteredExpenses = get().getFilteredExpenses();
+  const filteredIncome = get().getFilteredIncome();
 
-    set({ ExpenseTotal, IncomeTotal, isBroke });
-  },
+  const ExpenseTotal = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  const IncomeTotal = filteredIncome.reduce((sum, i) => sum + Number(i.amount), 0);
+  const isBroke = IncomeTotal < ExpenseTotal;
+
+  set({ ExpenseTotal, IncomeTotal, isBroke });
+},
 
   // Helper methods
   setLoading: (isLoading) => set({ isLoading }),
