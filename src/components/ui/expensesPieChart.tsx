@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { PieChart, Pie, ResponsiveContainer, Cell, Legend, Tooltip } from "recharts";
 import {
   Card,
@@ -11,21 +10,14 @@ import {
 } from "@/components/ui/card";
 import { useExpenseStore } from "@/useExpenseStore";
 
-interface ChartDataItem {
-  category: string;
-  amount: number;
-  fill: string;
-  percentage: number;
-}
-
 const EXPENSE_COLORS = {
-  food: "#8b5cf6", // purple-500
-  transport: "#ec4899", // pink-500
-  entertainment: "#f59e0b", // amber-500
-  utilities: "#3b82f6", // blue-500
-  shopping: "#ef4444", // red-500
-  health: "#10b981", // emerald-500
-  other: "#6366f1", // indigo-500
+  food: "#8b5cf6",
+  transport: "#ec4899",
+  entertainment: "#f59e0b",
+  utilities: "#3b82f6",
+  shopping: "#ef4444",
+  health: "#10b981",
+  other: "#6366f1",
 };
 
 const getColorForCategory = (category: string): string => {
@@ -33,56 +25,49 @@ const getColorForCategory = (category: string): string => {
   return EXPENSE_COLORS[lowerCategory as keyof typeof EXPENSE_COLORS] || "#a855f7";
 };
 
+const CustomTooltip = ({ active, payload, currency }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-card border border-border rounded-lg shadow-medium p-3">
+        <p className="font-semibold text-sm">{data.category}</p>
+        <p className="text-sm text-muted-foreground">
+          {currency} {data.amount.toLocaleString()}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {data.percentage.toFixed(1)}% of total
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 const OChart = () => {
-  const { expenses, currency, ExpenseTotal } = useExpenseStore();
-  const [chartData, setChartData] = React.useState<ChartDataItem[]>([]);
+  const { currency, getFilteredExpenses, ExpenseTotal, currentMonth } = useExpenseStore();
 
-  React.useEffect(() => {
-    if (expenses && expenses.length > 0) {
-      // Create a map to store totals per category
-      const categoryTotals = new Map<string, number>();
+  const filteredExpenses = getFilteredExpenses();
 
-      // Sum up amounts for each category
-      expenses.forEach((exp) => {
-        const amount =
-          typeof exp.amount === "string" ? parseFloat(exp.amount) : exp.amount;
-        const currentTotal = categoryTotals.get(exp.category) || 0;
-        categoryTotals.set(exp.category, currentTotal + amount);
-      });
+  const categoryTotals = new Map<string, number>();
+  filteredExpenses.forEach((exp) => {
+    const amount = typeof exp.amount === "string" ? parseFloat(exp.amount) : exp.amount;
+    categoryTotals.set(exp.category, (categoryTotals.get(exp.category) || 0) + amount);
+  });
 
-      // Transform the data for the chart
-      const transformedData: ChartDataItem[] = Array.from(categoryTotals).map(
-        ([category, amount]) => ({
-          category: category.charAt(0).toUpperCase() + category.slice(1),
-          amount,
-          fill: getColorForCategory(category),
-          percentage: ExpenseTotal > 0 ? (amount / ExpenseTotal) * 100 : 0,
-        })
-      );
+  const filteredTotal = Array.from(categoryTotals.values()).reduce((sum, v) => sum + v, 0);
+  const chartData = Array.from(categoryTotals)
+    .map(([category, amount]) => ({
+      category: category.charAt(0).toUpperCase() + category.slice(1),
+      amount,
+      fill: getColorForCategory(category),
+      percentage: filteredTotal > 0 ? (amount / filteredTotal) * 100 : 0,
+    }))
+    .sort((a, b) => b.amount - a.amount);
 
-      setChartData(transformedData.sort((a, b) => b.amount - a.amount));
-    } else {
-      setChartData([]);
-    }
-  }, [expenses, ExpenseTotal]);
-
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-card border border-border rounded-lg shadow-medium p-3">
-          <p className="font-semibold text-sm">{data.category}</p>
-          <p className="text-sm text-muted-foreground">
-            {currency} {data.amount.toLocaleString()}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {data.percentage.toFixed(1)}% of total
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
+  const monthLabel = new Date(currentMonth + "-02").toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
 
   return (
     <Card className="flex flex-col shadow-soft hover-lift transition-smooth">
@@ -96,7 +81,7 @@ const OChart = () => {
           <div>
             <CardTitle className="text-lg">Expenses Breakdown</CardTitle>
             <CardDescription className="text-sm">
-              By category • Total: {currency} {ExpenseTotal.toLocaleString()}
+              {monthLabel} • Total: {currency} {ExpenseTotal.toLocaleString()}
             </CardDescription>
           </div>
         </div>
@@ -110,8 +95,8 @@ const OChart = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <p className="text-sm font-medium text-muted-foreground">No expense data</p>
-              <p className="text-xs text-muted-foreground mt-1">Add expenses to see breakdown</p>
+              <p className="text-sm font-medium text-muted-foreground">No expenses in {monthLabel}</p>
+              <p className="text-xs text-muted-foreground mt-1">Add expenses to see the breakdown</p>
             </div>
           </div>
         ) : (
@@ -134,7 +119,7 @@ const OChart = () => {
                     <Cell key={`cell-${index}`} fill={entry.fill} />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip currency={currency} />} />
                 <Legend
                   verticalAlign="bottom"
                   height={36}

@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { PieChart, Pie, ResponsiveContainer, Cell, Legend, Tooltip } from "recharts";
 import {
   Card,
@@ -11,21 +10,14 @@ import {
 } from "@/components/ui/card";
 import { useExpenseStore } from "@/useExpenseStore";
 
-interface ChartDataItem {
-  category: string;
-  amount: number;
-  fill: string;
-  percentage: number;
-}
-
 const INCOME_COLORS = {
-  freelance: "#06b6d4", // cyan-500
-  "9 to 5": "#3b82f6", // blue-500
-  business: "#8b5cf6", // violet-500
-  rent: "#10b981", // emerald-500
-  salary: "#0ea5e9", // sky-500
-  investment: "#6366f1", // indigo-500
-  other: "#14b8a6", // teal-500
+  freelance: "#06b6d4",
+  "9 to 5": "#3b82f6",
+  business: "#8b5cf6",
+  rent: "#10b981",
+  salary: "#0ea5e9",
+  investment: "#6366f1",
+  other: "#14b8a6",
 };
 
 const getColorForCategory = (category: string): string => {
@@ -33,56 +25,49 @@ const getColorForCategory = (category: string): string => {
   return INCOME_COLORS[lowerCategory as keyof typeof INCOME_COLORS] || "#06b6d4";
 };
 
+const CustomTooltip = ({ active, payload, currency }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-card border border-border rounded-lg shadow-medium p-3">
+        <p className="font-semibold text-sm">{data.category}</p>
+        <p className="text-sm text-muted-foreground">
+          {currency} {data.amount.toLocaleString()}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {data.percentage.toFixed(1)}% of total
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 const IOChart = () => {
-  const { currentIncome, currency, IncomeTotal } = useExpenseStore();
-  const [chartData, setChartData] = React.useState<ChartDataItem[]>([]);
+  const { currency, getFilteredIncome, IncomeTotal, currentMonth } = useExpenseStore();
 
-  React.useEffect(() => {
-    if (currentIncome && currentIncome.length > 0) {
-      // Create a map to store totals per category
-      const categoryTotals = new Map<string, number>();
+  const filteredIncome = getFilteredIncome();
 
-      // Sum up amounts for each category
-      currentIncome.forEach((inc) => {
-        const amount =
-          typeof inc.amount === "string" ? parseFloat(inc.amount) : inc.amount;
-        const currentTotal = categoryTotals.get(inc.category) || 0;
-        categoryTotals.set(inc.category, currentTotal + amount);
-      });
+  const categoryTotals = new Map<string, number>();
+  filteredIncome.forEach((inc) => {
+    const amount = typeof inc.amount === "string" ? parseFloat(inc.amount) : inc.amount;
+    categoryTotals.set(inc.category, (categoryTotals.get(inc.category) || 0) + amount);
+  });
 
-      // Transform the data for the chart
-      const transformedData: ChartDataItem[] = Array.from(categoryTotals).map(
-        ([category, amount]) => ({
-          category: category.charAt(0).toUpperCase() + category.slice(1),
-          amount,
-          fill: getColorForCategory(category),
-          percentage: IncomeTotal > 0 ? (amount / IncomeTotal) * 100 : 0,
-        })
-      );
+  const filteredTotal = Array.from(categoryTotals.values()).reduce((sum, v) => sum + v, 0);
+  const chartData = Array.from(categoryTotals)
+    .map(([category, amount]) => ({
+      category: category.charAt(0).toUpperCase() + category.slice(1),
+      amount,
+      fill: getColorForCategory(category),
+      percentage: filteredTotal > 0 ? (amount / filteredTotal) * 100 : 0,
+    }))
+    .sort((a, b) => b.amount - a.amount);
 
-      setChartData(transformedData.sort((a, b) => b.amount - a.amount));
-    } else {
-      setChartData([]);
-    }
-  }, [currentIncome, IncomeTotal]);
-
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-card border border-border rounded-lg shadow-medium p-3">
-          <p className="font-semibold text-sm">{data.category}</p>
-          <p className="text-sm text-muted-foreground">
-            {currency} {data.amount.toLocaleString()}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {data.percentage.toFixed(1)}% of total
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
+  const monthLabel = new Date(currentMonth + "-02").toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
 
   return (
     <Card className="flex flex-col shadow-soft hover-lift transition-smooth">
@@ -96,7 +81,7 @@ const IOChart = () => {
           <div>
             <CardTitle className="text-lg">Income Breakdown</CardTitle>
             <CardDescription className="text-sm">
-              By category • Total: {currency} {IncomeTotal.toLocaleString()}
+              {monthLabel} • Total: {currency} {IncomeTotal.toLocaleString()}
             </CardDescription>
           </div>
         </div>
@@ -110,8 +95,8 @@ const IOChart = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <p className="text-sm font-medium text-muted-foreground">No income data</p>
-              <p className="text-xs text-muted-foreground mt-1">Add income to see breakdown</p>
+              <p className="text-sm font-medium text-muted-foreground">No income in {monthLabel}</p>
+              <p className="text-xs text-muted-foreground mt-1">Add income to see the breakdown</p>
             </div>
           </div>
         ) : (
@@ -134,7 +119,7 @@ const IOChart = () => {
                     <Cell key={`cell-${index}`} fill={entry.fill} />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip currency={currency} />} />
                 <Legend
                   verticalAlign="bottom"
                   height={36}
