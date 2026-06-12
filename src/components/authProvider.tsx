@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { AlertTriangle, Loader2, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useExpenseStore } from '@/useExpenseStore';
 import { Button } from '@/components/ui/button';
@@ -211,18 +212,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Error state
   if (authState === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-background to-orange-50">
-        <Card className="w-full max-w-md mx-4 sm:mx-auto shadow-strong hover-lift border-red-200">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md shadow-medium border-destructive/30">
           <CardHeader className="text-center space-y-2 pb-4">
-            <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-2">
-              <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
+            <div className="mx-auto w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mb-2">
+              <AlertTriangle className="w-6 h-6" />
             </div>
-            <CardTitle className="text-2xl font-bold text-red-600">Connection Error</CardTitle>
+            <CardTitle className="text-2xl font-bold text-destructive">Connection Error</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-center">
-            <p className="text-red-600 text-sm">{error}</p>
+            <p className="text-destructive text-sm">{error}</p>
             <div className="space-y-3 pt-2">
               <Button onClick={retryInitialization} className="w-full shadow-soft">
                 Retry Connection
@@ -244,15 +243,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Loading state
   if (authState === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="relative">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary/20 border-t-primary mx-auto"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-8 h-8 rounded-full bg-primary/10"></div>
-            </div>
-          </div>
-          <p className="mt-6 text-muted-foreground font-medium">Loading your experience...</p>
+          <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+          <p className="mt-5 text-muted-foreground font-medium">Loading your experience…</p>
         </div>
       </div>
     );
@@ -268,13 +262,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-accent/30 rounded-full blur-3xl"></div>
         </div>
 
-        <Card className="w-full max-w-md mx-4 sm:mx-auto shadow-strong hover-lift relative z-10 border-primary/20">
+        <Card className="w-full max-w-md mx-4 sm:mx-auto shadow-medium hover-lift relative z-10 border-primary/20">
           <CardHeader className="text-center space-y-3 pb-6">
-            <div className="mx-auto w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center mb-2">
-              <Image src={'/expensio.png'} alt="Expensio Logo" width={64} height={64} />
-
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mb-2 shadow-soft">
+              <Image src={'/expensio.png'} alt="Expensio Logo" width={56} height={56} />
             </div>
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            <CardTitle className="text-3xl font-bold tracking-tight">
               Welcome to Expensio
             </CardTitle>
             <p className="text-muted-foreground text-sm">Track expenses, manage income, achieve your financial goals</p>
@@ -305,11 +298,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             <Button
               onClick={signInAnonymously}
-              className="w-full h-11 gradient-primary text-white shadow-soft hover:shadow-medium transition-smooth border-0"
+              className="w-full h-11 shadow-soft hover:shadow-medium transition-smooth"
             >
-              <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+              <Zap className="w-5 h-5 mr-2" />
               Try Demo Now
             </Button>
 

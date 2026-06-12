@@ -23,26 +23,28 @@ export function MonthNavigator() {
   const isCurrentMonth = currentMonth === new Date().toISOString().slice(0, 7);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1 rounded-full border bg-card p-1 shadow-soft">
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon"
         onClick={() => navigate('prev')}
-        className="h-8 w-8"
+        className="h-8 w-8 rounded-full"
+        aria-label="Previous month"
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
 
-      <span className="text-sm font-medium min-w-[120px] text-center">
+      <span className="min-w-[130px] text-center text-sm font-medium">
         {formatted}
       </span>
 
       <Button
-        variant="outline"
+        variant="ghost"
         size="icon"
         onClick={() => navigate('next')}
         disabled={isCurrentMonth}
-        className="h-8 w-8"
+        className="h-8 w-8 rounded-full"
+        aria-label="Next month"
       >
         <ChevronRight className="h-4 w-4" />
       </Button>

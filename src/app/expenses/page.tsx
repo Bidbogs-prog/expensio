@@ -1,306 +1,40 @@
-// src/app/expenses/page.tsx
 "use client";
 
-import { useState } from "react";
-import { ExpenseForm } from "@/components/ExpenseForm";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { useExpenseStore } from "@/useExpenseStore";
+import { AlertTriangle } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { CurrencySelect } from "@/components/currency-select";
 import { MonthNavigator } from "@/components/monthNavigator";
-
-const DEFAULT_CATEGORIES = ["food", "transport", "bills", "entertainment"];
+import { TransactionForm } from "@/components/transaction-form";
+import { TransactionTable } from "@/components/transaction-table";
+import { Card } from "@/components/ui/card";
+import { useExpenseStore } from "@/useExpenseStore";
 
 export default function ExpensesPage() {
-  const {
-    expenses,
-    currency,
-    ExpenseTotal,
-    setCurrency,
-    removeExpense,
-    editExpense,
-    isLoading,
-    getFilteredExpenses,
-    error
-  } = useExpenseStore();
-
-  const filteredExpenses = getFilteredExpenses(); // ← add this line
-
-
-  const existingCategories = [...new Set(filteredExpenses.map((e) => e.category))];
-  const allCategories = [...new Set([...DEFAULT_CATEGORIES, ...existingCategories])];
-
-  const currencies = ["USD", "MAD", "EUR"] as const;
-
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editValues, setEditValues] = useState({ category: "", name: "", amount: "", date: "" });
-
-  const startEditing = (expense: { id?: number; category: string; name: string; amount: number; date: string }) => {
-    if (!expense.id) return;
-    setEditingId(expense.id);
-    setEditValues({
-      category: expense.category,
-      name: expense.name,
-      amount: String(expense.amount),
-      date: expense.date ? expense.date.split("T")[0] : new Date().toISOString().split("T")[0],
-    });
-  };
-
-  const cancelEditing = () => {
-    setEditingId(null);
-    setEditValues({ category: "", name: "", amount: "", date: "" });
-  };
-
-  const saveEdit = async () => {
-    if (!editingId || !editValues.name || !editValues.amount || !editValues.category) return;
-    await editExpense(editingId, editValues);
-    setEditingId(null);
-    setEditValues({ category: "", name: "", amount: "", date: "" });
-  };
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/20 p-6">
-        <div className="w-full max-w-4xl mx-auto">
-          <Card className="bg-red-50 border-red-200 shadow-soft p-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-200 flex items-center justify-center">
-                <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <p className="text-red-600 font-medium">Error: {error}</p>
-            </div>
-          </Card>
-        </div>
-      </div>
-    );
-  }
+  const error = useExpenseStore((s) => s.error);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/20">
-      <div className="w-full max-w-5xl mx-auto p-4 sm:p-6">
-        {/* Header */}
-        <div className="flex justify-between items-center gap-3 mb-6 sm:mb-8">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-              Expenses
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Track and manage your expenses
-            </p>
-          </div>
-          <Select onValueChange={setCurrency} value={currency}>
-            <SelectTrigger className="w-[100px] shadow-soft">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {currencies.map((cur) => (
-                <SelectItem key={cur} value={cur}>
-                  {cur}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <div className="min-h-screen">
+      <PageHeader title="Expenses" subtitle="Track and manage your spending">
+        <CurrencySelect />
+      </PageHeader>
+
+      <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6">
+        <div className="flex justify-center">
+          <MonthNavigator />
         </div>
 
-         {/* Month Navigator */}
-        <div className="flex justify-center py-4 px-6">
-            <MonthNavigator />
-        </div>
-                
+        {error && (
+          <Card className="flex items-center gap-3 border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            {error}
+          </Card>
+        )}
 
-        {/* Expense Form */}
-        <Card className="mb-6 sm:mb-8 shadow-soft hover-lift p-4 sm:p-6">
-          <ExpenseForm />
+        <Card className="p-4 shadow-soft sm:p-6">
+          <TransactionForm kind="expense" />
         </Card>
 
-        {/* Expenses Table */}
-        <Card className="shadow-medium overflow-hidden">
-          {isLoading && (
-            <div className="flex justify-center py-8 bg-muted/20">
-              <div className="flex items-center gap-3">
-                <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary/20 border-t-primary"></div>
-                <span className="text-sm text-muted-foreground">Loading expenses...</span>
-              </div>
-            </div>
-          )}
-
-          {filteredExpenses.length === 0 && !isLoading ? (
-            <div className="p-8 sm:p-12 text-center">
-              <div className="mx-auto w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold mb-1">No expenses yet</h3>
-              <p className="text-sm text-muted-foreground">Add your first expense using the form above</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-[20%] font-semibold">Category</TableHead>
-                    <TableHead className="w-[25%] font-semibold">Item</TableHead>
-                    <TableHead className="w-[20%] font-semibold">Date</TableHead>
-                    <TableHead className="w-[20%] text-right font-semibold">Amount</TableHead>
-                    <TableHead className="w-[15%] text-center font-semibold">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredExpenses.map((expense) => (
-                    <TableRow key={expense.id} className="hover:bg-muted/30 transition-colors">
-                      {editingId === expense.id ? (
-                        <>
-                          <TableCell>
-                            <Select
-                              value={editValues.category}
-                              onValueChange={(val) => setEditValues((prev) => ({ ...prev, category: val }))}
-                            >
-                              <SelectTrigger className="h-8 text-sm">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {allCategories.map((cat) => (
-                                  <SelectItem key={cat} value={cat}>
-                                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              value={editValues.name}
-                              onChange={(e) => setEditValues((prev) => ({ ...prev, name: e.target.value }))}
-                              className="h-8 text-sm"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="date"
-                              value={editValues.date}
-                              onChange={(e) => setEditValues((prev) => ({ ...prev, date: e.target.value }))}
-                              className="h-8 text-sm"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              value={editValues.amount}
-                              onChange={(e) => setEditValues((prev) => ({ ...prev, amount: e.target.value }))}
-                              className="h-8 text-sm text-right"
-                            />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                size="sm"
-                                onClick={saveEdit}
-                                className="h-8 w-8 rounded-full p-0 shadow-soft"
-                                disabled={isLoading}
-                              >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={cancelEditing}
-                                className="h-8 w-8 rounded-full p-0"
-                              >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </>
-                      ) : (
-                        <>
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full bg-primary"></div>
-                              {expense.category.charAt(0).toUpperCase() +
-                                expense.category.slice(1)}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {expense.name.charAt(0).toUpperCase() + expense.name.slice(1)}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {expense.date
-                              ? new Date(expense.date).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
-                              : "—"}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold text-purple-600">
-                            {expense.amount.toLocaleString()} {currency}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => startEditing(expense)}
-                                className="h-8 w-8 rounded-full p-0 shadow-soft hover:shadow-medium transition-smooth"
-                                disabled={isLoading}
-                              >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                </svg>
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => expense.id && removeExpense(expense.id)}
-                                className="h-8 w-8 rounded-full p-0 shadow-soft hover:shadow-medium transition-smooth"
-                                disabled={isLoading}
-                              >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </>
-                      )}
-                    </TableRow>
-                  ))}
-
-                  {/* Total row */}
-                  {expenses.length > 0 && (
-                    <TableRow className="bg-gradient-to-r from-purple-50 to-violet-100/50 border-t-2 border-purple-200">
-                      <TableCell colSpan={3} className="font-bold text-base sm:text-lg">
-                        Total Expenses
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-base sm:text-lg text-purple-600">
-                        {ExpenseTotal.toLocaleString()} {currency}
-                      </TableCell>
-                      <TableCell />
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </Card>
+        <TransactionTable kind="expense" />
       </div>
     </div>
   );
