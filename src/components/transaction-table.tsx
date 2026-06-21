@@ -21,7 +21,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { useExpenseStore } from "@/useExpenseStore";
+import { useCurrency, useDeleteTransaction, useUpdateTransaction, useTransactions } from "@/lib/queries";
+import { useMonthTransactions, useMonthTotals } from "@/hooks/use-derived";
 import { TX_CONFIG, formatCategory, type TxKind } from "@/lib/transaction-ui";
 import type { Transaction } from "@/types";
 
@@ -38,24 +39,16 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
   const cfg = TX_CONFIG[kind];
   const isExpense = kind === "expense";
 
-  const currency = useExpenseStore((s) => s.currency);
-  const isLoading = useExpenseStore((s) => s.isLoading);
-  const expenses = useExpenseStore((s) => s.expenses);
-  const income = useExpenseStore((s) => s.currentIncome);
-  const currentMonth = useExpenseStore((s) => s.currentMonth);
-  const expenseTotal = useExpenseStore((s) => s.ExpenseTotal);
-  const incomeTotal = useExpenseStore((s) => s.IncomeTotal);
-  const removeExpense = useExpenseStore((s) => s.removeExpense);
-  const removeIncome = useExpenseStore((s) => s.removeIncome);
-  const editExpense = useExpenseStore((s) => s.editExpense);
-  const editIncome = useExpenseStore((s) => s.editIncome);
+  const currency = useCurrency();
+  const { isLoading } = useTransactions(kind);
+  const items = useMonthTransactions(kind);
+  const totals = useMonthTotals();
+  const del = useDeleteTransaction(kind);
+  const upd = useUpdateTransaction(kind);
 
-  const all = isExpense ? expenses : income;
-  const total = isExpense ? expenseTotal : incomeTotal;
-  const remove = isExpense ? removeExpense : removeIncome;
-  const edit = isExpense ? editExpense : editIncome;
+  const total = isExpense ? totals.expenseTotal : totals.incomeTotal;
+  const busy = isLoading || del.isPending || upd.isPending;
 
-  const items = all.filter((i) => i.date.startsWith(currentMonth));
   const allCategories = [
     ...new Set([...cfg.defaultCategories, ...items.map((i) => i.category)]),
   ];
@@ -84,7 +77,7 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
   const saveEdit = async () => {
     if (!editingId || !editValues.name || !editValues.amount || !editValues.category)
       return;
-    await edit(editingId, editValues);
+    await upd.mutateAsync({ id: editingId, values: editValues });
     cancelEditing();
   };
 
@@ -180,7 +173,7 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-1">
-                        <Button size="icon" onClick={saveEdit} disabled={isLoading} className="h-8 w-8">
+                        <Button size="icon" onClick={saveEdit} disabled={busy} className="h-8 w-8">
                           <Check className="h-4 w-4" />
                         </Button>
                         <Button size="icon" variant="outline" onClick={cancelEditing} className="h-8 w-8">
@@ -201,7 +194,7 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(item.date)}
                     </TableCell>
-                    <TableCell className={cn("text-right font-semibold", cfg.amountClass)}>
+                    <TableCell className={cn("text-right font-mono font-semibold tabular", cfg.amountClass)}>
                       {item.amount.toLocaleString()} {currency}
                     </TableCell>
                     <TableCell>
@@ -210,7 +203,7 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
                           variant="ghost"
                           size="icon"
                           onClick={() => startEditing(item)}
-                          disabled={isLoading}
+                          disabled={busy}
                           className="h-8 w-8 text-muted-foreground hover:text-foreground"
                         >
                           <Pencil className="h-4 w-4" />
@@ -218,8 +211,8 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => item.id && remove(item.id)}
-                          disabled={isLoading}
+                          onClick={() => item.id && del.mutate(item.id)}
+                          disabled={busy}
                           className="h-8 w-8 text-muted-foreground hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -231,10 +224,10 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
               )}
 
               <TableRow className="border-t-2 bg-muted/30 hover:bg-muted/30">
-                <TableCell colSpan={3} className="text-base font-bold">
+                <TableCell colSpan={3} className="font-display text-base font-bold">
                   {cfg.totalLabel}
                 </TableCell>
-                <TableCell className={cn("text-right text-base font-bold", cfg.amountClass)}>
+                <TableCell className={cn("text-right font-mono text-base font-bold tabular", cfg.amountClass)}>
                   {total.toLocaleString()} {currency}
                 </TableCell>
                 <TableCell />

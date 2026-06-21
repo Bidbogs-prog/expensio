@@ -2,35 +2,27 @@
 import { supabase } from './supabase'
 import type { Expense, Income, UserSettings } from '@/types'
 
-// Auth helper to ensure we have a valid session
+// Auth helper to ensure we have a valid session.
+//
+// getSession() reads the locally-stored, signature-verified JWT (and silently
+// refreshes it when needed) — no network round-trip. We intentionally do NOT
+// call getUser() here: it hits the Supabase auth server on *every* CRUD/init
+// call, creating a request waterfall, and adds nothing — row-level security on
+// the server is the real authorization boundary, and we still scope every query
+// by user_id below as defence-in-depth.
 async function ensureAuthenticated() {
-  // First check if we have a session
   const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-  
-  
+
   if (sessionError) {
     console.error('Session error:', sessionError)
     throw new Error('Failed to verify authentication')
   }
 
-  if (!session) {
+  if (!session?.user) {
     throw new Error('No active session - user needs to sign in')
   }
 
-  // Double-check with getUser for additional validation
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-  
-  if (userError) {
-    console.error('User validation error:', userError)
-    throw new Error('Authentication validation failed')
-  }
-
-  if (!user) {
-    throw new Error('User not authenticated')
-  }
-
-  return { user, session }
+  return { user: session.user, session }
 }
 
 // Enhanced error handling wrapper

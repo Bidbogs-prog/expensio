@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { useExpenseStore } from "@/useExpenseStore";
+import { useAddTransaction, useRenameCategory, useTransactions } from "@/lib/queries";
 import { expenseFormSchema, type ExpenseFormValues } from "@/form-schemas";
 import { TX_CONFIG, formatCategory, type TxKind } from "@/lib/transaction-ui";
 
@@ -30,20 +30,11 @@ const CUSTOM_VALUE = "__custom__";
 
 export function TransactionForm({ kind }: { kind: TxKind }) {
   const cfg = TX_CONFIG[kind];
-  const isExpense = kind === "expense";
 
-  // Store wiring — subscribe to both kinds and pick, so the component stays unified.
-  const addExpense = useExpenseStore((s) => s.addExpense);
-  const addIncome = useExpenseStore((s) => s.addIncome);
-  const expenses = useExpenseStore((s) => s.expenses);
-  const income = useExpenseStore((s) => s.currentIncome);
-  const renameExpenseCategory = useExpenseStore((s) => s.renameExpenseCategory);
-  const renameIncomeCategory = useExpenseStore((s) => s.renameIncomeCategory);
-  const isLoading = useExpenseStore((s) => s.isLoading);
-
-  const add = isExpense ? addExpense : addIncome;
-  const items = isExpense ? expenses : income;
-  const renameCategory = isExpense ? renameExpenseCategory : renameIncomeCategory;
+  const add = useAddTransaction(kind);
+  const rename = useRenameCategory(kind);
+  const { data: items = [], isLoading } = useTransactions(kind);
+  const busy = isLoading || add.isPending || rename.isPending;
 
   const [showCustom, setShowCustom] = useState(false);
   const [customCategory, setCustomCategory] = useState("");
@@ -72,7 +63,7 @@ export function TransactionForm({ kind }: { kind: TxKind }) {
   });
 
   function onSubmit(values: ExpenseFormValues) {
-    add(values);
+    add.mutate(values);
     form.reset();
     setShowCustom(false);
     setCustomCategory("");
@@ -101,7 +92,7 @@ export function TransactionForm({ kind }: { kind: TxKind }) {
       return;
     }
     if (getCategoryCount(editingCat) > 0) {
-      await renameCategory(editingCat, newName);
+      await rename.mutateAsync({ oldName: editingCat, newName });
     }
     setAddedCategories((prev) => prev.map((c) => (c === editingCat ? newName : c)));
     if (form.getValues("category") === editingCat) {
@@ -124,7 +115,7 @@ export function TransactionForm({ kind }: { kind: TxKind }) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-base font-semibold">{cfg.addHeading}</h3>
+            <h3 className="font-display text-base font-bold tracking-tight">{cfg.addHeading}</h3>
             <p className="text-sm text-muted-foreground">{cfg.addSubheading}</p>
           </div>
           <Button
@@ -170,7 +161,7 @@ export function TransactionForm({ kind }: { kind: TxKind }) {
                   <span className="text-xs tabular-nums text-muted-foreground">{count}</span>
                   {isEditing ? (
                     <>
-                      <Button type="button" variant="ghost" size="sm" onClick={saveEditCat} disabled={isLoading} className="h-7 w-7 p-0">
+                      <Button type="button" variant="ghost" size="sm" onClick={saveEditCat} disabled={busy} className="h-7 w-7 p-0">
                         <Check className="h-3.5 w-3.5 text-emerald-600" />
                       </Button>
                       <Button type="button" variant="ghost" size="sm" onClick={() => setEditingCat(null)} className="h-7 w-7 p-0">
@@ -179,7 +170,7 @@ export function TransactionForm({ kind }: { kind: TxKind }) {
                     </>
                   ) : (
                     <>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => startEditingCat(cat)} disabled={isLoading} className="h-7 w-7 p-0 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Button type="button" variant="ghost" size="sm" onClick={() => startEditingCat(cat)} disabled={busy} className="h-7 w-7 p-0 opacity-0 transition-opacity group-hover:opacity-100">
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       <Button
@@ -187,7 +178,7 @@ export function TransactionForm({ kind }: { kind: TxKind }) {
                         variant="ghost"
                         size="sm"
                         onClick={() => deleteCat(cat)}
-                        disabled={count > 0 || isLoading}
+                        disabled={count > 0 || busy}
                         title={count > 0 ? `${count} item(s) use this category` : "Remove category"}
                         className="h-7 w-7 p-0 text-destructive opacity-0 transition-opacity group-hover:opacity-100 disabled:text-muted-foreground"
                       >
@@ -322,7 +313,7 @@ export function TransactionForm({ kind }: { kind: TxKind }) {
         </div>
 
         <div className="flex justify-end">
-          <Button type="submit" disabled={isLoading} className="w-full shadow-soft sm:w-auto sm:min-w-[150px]">
+          <Button type="submit" disabled={busy} className="w-full shadow-soft sm:w-auto sm:min-w-[150px]">
             <Plus className="mr-1.5 h-4 w-4" />
             {cfg.addHeading}
           </Button>

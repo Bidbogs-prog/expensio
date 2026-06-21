@@ -1,6 +1,6 @@
 "use client";
 
-import { PieChart, Pie, ResponsiveContainer, Cell, Legend, Tooltip } from "recharts";
+import dynamic from "next/dynamic";
 import { PieChart as PieIcon } from "lucide-react";
 import {
   Card,
@@ -10,60 +10,36 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useExpenseStore } from "@/useExpenseStore";
+import { useCurrency } from "@/lib/queries";
+import { useMonthTransactions, useMonthTotals, useCurrentMonth } from "@/hooks/use-derived";
 import {
   TX_CONFIG,
   colorForCategory,
   formatCategory,
   type TxKind,
 } from "@/lib/transaction-ui";
+import type { SliceDatum } from "@/components/charts/pie-graph";
 
-interface SliceDatum {
-  category: string;
-  amount: number;
-  fill: string;
-  percentage: number;
-}
-
-function ChartTooltip({
-  active,
-  payload,
-  currency,
-}: {
-  active?: boolean;
-  payload?: { payload: SliceDatum }[];
-  currency: string;
-}) {
-  if (!active || !payload?.length) return null;
-  const data = payload[0].payload;
-  return (
-    <div className="rounded-lg border bg-popover p-3 text-popover-foreground shadow-medium">
-      <p className="text-sm font-semibold">{data.category}</p>
-      <p className="text-sm text-muted-foreground">
-        {currency} {data.amount.toLocaleString()}
-      </p>
-      <p className="text-xs text-muted-foreground">
-        {data.percentage.toFixed(1)}% of total
-      </p>
-    </div>
-  );
-}
+// recharts is heavy (~tens of KB) — load it only when a chart actually renders,
+// keeping it out of the initial route bundle.
+const PieGraph = dynamic(
+  () => import("@/components/charts/pie-graph").then((m) => m.PieGraph),
+  {
+    ssr: false,
+    loading: () => <div className="h-full w-full animate-pulse rounded-xl bg-muted/40" />,
+  }
+);
 
 export function CategoryPieChart({ kind }: { kind: TxKind }) {
   const cfg = TX_CONFIG[kind];
   const isExpense = kind === "expense";
 
-  const currency = useExpenseStore((s) => s.currency);
-  const expenses = useExpenseStore((s) => s.expenses);
-  const income = useExpenseStore((s) => s.currentIncome);
-  const currentMonth = useExpenseStore((s) => s.currentMonth);
-  const expenseTotal = useExpenseStore((s) => s.ExpenseTotal);
-  const incomeTotal = useExpenseStore((s) => s.IncomeTotal);
+  const currency = useCurrency();
+  const currentMonth = useCurrentMonth();
+  const totals = useMonthTotals();
+  const items = useMonthTransactions(kind);
 
-  const total = isExpense ? expenseTotal : incomeTotal;
-  const items = (isExpense ? expenses : income).filter((i) =>
-    i.date.startsWith(currentMonth)
-  );
+  const total = isExpense ? totals.expenseTotal : totals.incomeTotal;
 
   const categoryTotals = new Map<string, number>();
   items.forEach((item) => {
@@ -99,9 +75,11 @@ export function CategoryPieChart({ kind }: { kind: TxKind }) {
             <PieIcon className="h-[1.1rem] w-[1.1rem]" />
           </div>
           <div>
-            <CardTitle className="text-base">{cfg.title} breakdown</CardTitle>
-            <CardDescription>
-              {monthLabel} · {currency} {total.toLocaleString()}
+            <CardTitle className="font-display text-base font-bold tracking-tight">
+              {cfg.title} breakdown
+            </CardTitle>
+            <CardDescription className="font-mono text-xs tabular">
+              {monthLabel} · {total.toLocaleString()} {currency}
             </CardDescription>
           </div>
         </div>
@@ -118,37 +96,7 @@ export function CategoryPieChart({ kind }: { kind: TxKind }) {
           </div>
         ) : (
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="99%" height="100%">
-              <PieChart>
-                <Pie
-                  data={chartData}
-                  dataKey="amount"
-                  nameKey="category"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius="45%"
-                  outerRadius="65%"
-                  paddingAngle={2}
-                  strokeWidth={2}
-                  stroke="hsl(var(--card))"
-                >
-                  {chartData.map((entry) => (
-                    <Cell key={entry.category} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip content={<ChartTooltip currency={currency} />} />
-                <Legend
-                  verticalAlign="bottom"
-                  height={36}
-                  iconType="circle"
-                  formatter={(value, entry) => (
-                    <span className="text-sm text-foreground">
-                      {value} ({(entry?.payload as unknown as SliceDatum)?.percentage.toFixed(0)}%)
-                    </span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            <PieGraph chartData={chartData} currency={currency} />
           </div>
         )}
       </CardContent>

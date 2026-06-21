@@ -1,77 +1,100 @@
 "use client";
 
-import { ArrowDownRight, ArrowUpRight, TrendingDown, Wallet } from "lucide-react";
-import { useExpenseStore } from "@/useExpenseStore";
+import { PiggyBank, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { useCurrency } from "@/lib/queries";
+import { useAnalytics, useCurrentMonth } from "@/hooks/use-derived";
 import { PageHeader } from "@/components/page-header";
 import { CurrencySelect } from "@/components/currency-select";
 import { MonthNavigator } from "@/components/monthNavigator";
 import { StatCard } from "@/components/stat-card";
 import { CategoryPieChart } from "@/components/category-pie-chart";
+import { InsightsPanel } from "@/components/insights-panel";
+import { SpendingTrend } from "@/components/spending-trend";
 
 export default function Home() {
-  const currency = useExpenseStore((s) => s.currency);
-  const expenseTotal = useExpenseStore((s) => s.ExpenseTotal);
-  const incomeTotal = useExpenseStore((s) => s.IncomeTotal);
-  const isBroke = useExpenseStore((s) => s.isBroke);
+  const currency = useCurrency();
+  const currentMonth = useCurrentMonth();
+  const a = useAnalytics();
 
-  const balance = incomeTotal - expenseTotal;
-  const fmt = (n: number) => `${n.toLocaleString()} ${currency}`;
+  const fmt = (n: number) => Math.round(n).toLocaleString();
+  const savingsPct = Math.round(a.savingsRate * 100);
+  const expensePct = Math.round(a.expenseDelta * 100);
 
   return (
     <div className="min-h-screen">
-      <PageHeader title="Dashboard" subtitle="Overview of your finances">
+      <PageHeader eyebrow="Overview" title="Dashboard" subtitle="Your money, this month">
+        <div className="hidden sm:block">
+          <MonthNavigator />
+        </div>
         <CurrencySelect />
       </PageHeader>
 
-      <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6">
-        <div className="flex justify-center">
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6">
+        <div className="flex justify-center sm:hidden">
           <MonthNavigator />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Stat row */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <StatCard
             label="Balance"
-            value={fmt(balance)}
+            value={fmt(a.balance)}
+            unit={currency}
             icon={Wallet}
-            valueClass={
-              isBroke
-                ? "text-rose-600 dark:text-rose-400"
-                : "text-emerald-600 dark:text-emerald-400"
-            }
-            chipClass={
-              isBroke
-                ? "bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400"
-                : "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
-            }
-            badge={
-              isBroke ? (
-                <span className="inline-flex w-fit items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-xs font-medium text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
-                  <ArrowDownRight className="h-3.5 w-3.5" />
-                  Spending exceeds income
-                </span>
-              ) : null
+            tone={a.balance < 0 ? "negative" : "positive"}
+            featured
+            hint={
+              a.balance < 0 ? (
+                <span className="text-xs font-medium text-rose-400">Over budget</span>
+              ) : (
+                <span className="text-xs text-muted-foreground">Income − expenses</span>
+              )
             }
           />
-
           <StatCard
             label="Income"
-            value={fmt(incomeTotal)}
-            icon={ArrowUpRight}
-            valueClass="text-emerald-600 dark:text-emerald-400"
-            chipClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
+            value={fmt(a.incomeTotal)}
+            unit={currency}
+            icon={TrendingUp}
+            tone="positive"
+            hint={<span className="text-xs text-muted-foreground">{currentMonth.replace("-", " · ")}</span>}
           />
-
           <StatCard
             label="Expenses"
-            value={fmt(expenseTotal)}
+            value={fmt(a.expenseTotal)}
+            unit={currency}
             icon={TrendingDown}
-            valueClass="text-rose-600 dark:text-rose-400"
-            chipClass="bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400"
+            tone="negative"
+            delta={
+              a.prevExpenseTotal > 0
+                ? { label: `${Math.abs(expensePct)}%`, positive: a.expenseDelta <= 0 }
+                : null
+            }
+          />
+          <StatCard
+            label="Savings rate"
+            value={a.incomeTotal > 0 ? `${savingsPct}` : "—"}
+            unit={a.incomeTotal > 0 ? "%" : undefined}
+            icon={PiggyBank}
+            tone="accent"
+            featured
+            hint={
+              <span className="text-xs text-muted-foreground">
+                {savingsPct >= 20 ? "On target" : a.incomeTotal > 0 ? "Aim for 20%" : "Add income"}
+              </span>
+            }
           />
         </div>
 
+        {/* AI + analytics */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <InsightsPanel variant="compact" />
+          <SpendingTrend />
+        </div>
+
+        {/* Breakdown */}
         <div>
-          <h2 className="mb-3 text-lg font-semibold">Breakdown</h2>
+          <h2 className="mb-3 font-display text-lg font-bold tracking-tight">Breakdown</h2>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <CategoryPieChart kind="expense" />
             <CategoryPieChart kind="income" />

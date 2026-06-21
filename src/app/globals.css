@@ -2,77 +2,139 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  ─────────────────────────────────────────────────────────────────────────────
+  EXPENSIO · "MIDNIGHT LEDGER"
+  Premium dark-first fintech aesthetic. Deep ink-green canvas, one electric
+  lime accent, tabular numerals, editorial display type, subtle glow + grain.
+  ─────────────────────────────────────────────────────────────────────────────
+*/
+
 @layer base {
+  /* Default (and canonical) theme = Midnight Ledger. Light variant lives under .light */
   :root {
-    /* Clean minimal palette — neutral surfaces, single violet accent */
-    --background: 0 0% 100%;
-    --foreground: 240 10% 12%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 12%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 12%;
-    --primary: 256 70% 56%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 240 10% 18%;
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
-    --accent: 240 5% 96%;
-    --accent-foreground: 240 10% 18%;
-    --destructive: 0 72% 51%;
+    --background: 165 22% 5%;
+    --foreground: 150 14% 95%;
+    --card: 168 16% 7.5%;
+    --card-foreground: 150 14% 95%;
+    --popover: 170 20% 6.5%;
+    --popover-foreground: 150 14% 95%;
+    --primary: 79 88% 57%;            /* electric lime */
+    --primary-foreground: 160 45% 7%;
+    --secondary: 165 11% 13%;
+    --secondary-foreground: 150 12% 92%;
+    --muted: 165 11% 12%;
+    --muted-foreground: 150 7% 56%;
+    --accent: 165 13% 14%;
+    --accent-foreground: 150 12% 92%;
+    --destructive: 4 84% 61%;
     --destructive-foreground: 0 0% 100%;
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 256 70% 56%;
-    --chart-1: 256 70% 56%;
-    --chart-2: 200 90% 48%;
-    --chart-3: 160 70% 42%;
-    --chart-4: 32 95% 55%;
-    --chart-5: 340 78% 56%;
-    --radius: 0.7rem;
-    --sidebar-background: 240 5% 98%;
-    --sidebar-foreground: 240 5% 30%;
-    --sidebar-primary: 256 70% 56%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 5% 94%;
-    --sidebar-accent-foreground: 240 10% 18%;
-    --sidebar-border: 240 6% 91%;
-    --sidebar-ring: 256 70% 56%;
+    --border: 165 12% 14.5%;
+    --input: 165 12% 16%;
+    --ring: 79 88% 57%;
+
+    --chart-1: 79 88% 57%;            /* lime   */
+    --chart-2: 168 70% 48%;           /* teal   */
+    --chart-3: 192 85% 55%;           /* cyan   */
+    --chart-4: 38 95% 58%;            /* amber  */
+    --chart-5: 340 80% 62%;           /* rose   */
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 170 24% 4.5%;
+    --sidebar-foreground: 150 8% 70%;
+    --sidebar-primary: 79 88% 57%;
+    --sidebar-primary-foreground: 160 45% 7%;
+    --sidebar-accent: 165 12% 11%;
+    --sidebar-accent-foreground: 150 12% 92%;
+    --sidebar-border: 165 12% 12%;
+    --sidebar-ring: 79 88% 57%;
+
+    /* atmospheric helpers */
+    --glow: 79 88% 57%;
+    --positive: 152 68% 50%;
+    --negative: 4 84% 64%;
+    --warning: 38 95% 58%;
   }
 
+  /* Keep .dark mapped to the same midnight palette so the toggle never breaks. */
   .dark {
-    --background: 240 10% 7%;
-    --foreground: 240 6% 92%;
-    --card: 240 8% 10%;
-    --card-foreground: 240 6% 92%;
-    --popover: 240 8% 10%;
-    --popover-foreground: 240 6% 92%;
-    --primary: 256 80% 68%;
-    --primary-foreground: 240 10% 8%;
-    --secondary: 240 5% 15%;
-    --secondary-foreground: 240 6% 92%;
-    --muted: 240 5% 15%;
-    --muted-foreground: 240 5% 60%;
-    --accent: 240 5% 16%;
-    --accent-foreground: 240 6% 92%;
-    --destructive: 0 62% 46%;
+    --background: 165 22% 5%;
+    --foreground: 150 14% 95%;
+    --card: 168 16% 7.5%;
+    --card-foreground: 150 14% 95%;
+    --popover: 170 20% 6.5%;
+    --popover-foreground: 150 14% 95%;
+    --primary: 79 88% 57%;
+    --primary-foreground: 160 45% 7%;
+    --secondary: 165 11% 13%;
+    --secondary-foreground: 150 12% 92%;
+    --muted: 165 11% 12%;
+    --muted-foreground: 150 7% 56%;
+    --accent: 165 13% 14%;
+    --accent-foreground: 150 12% 92%;
+    --destructive: 4 84% 61%;
     --destructive-foreground: 0 0% 100%;
-    --border: 240 5% 18%;
-    --input: 240 5% 18%;
-    --ring: 256 80% 68%;
-    --chart-1: 256 80% 68%;
-    --chart-2: 200 85% 58%;
-    --chart-3: 160 65% 50%;
-    --chart-4: 32 90% 60%;
-    --chart-5: 340 75% 64%;
-    --sidebar-background: 240 9% 9%;
-    --sidebar-foreground: 240 5% 78%;
-    --sidebar-primary: 256 80% 68%;
-    --sidebar-primary-foreground: 240 10% 8%;
-    --sidebar-accent: 240 5% 15%;
-    --sidebar-accent-foreground: 240 6% 92%;
-    --sidebar-border: 240 5% 16%;
-    --sidebar-ring: 256 80% 68%;
+    --border: 165 12% 14.5%;
+    --input: 165 12% 16%;
+    --ring: 79 88% 57%;
+    --chart-1: 79 88% 57%;
+    --chart-2: 168 70% 48%;
+    --chart-3: 192 85% 55%;
+    --chart-4: 38 95% 58%;
+    --chart-5: 340 80% 62%;
+    --sidebar-background: 170 24% 4.5%;
+    --sidebar-foreground: 150 8% 70%;
+    --sidebar-primary: 79 88% 57%;
+    --sidebar-primary-foreground: 160 45% 7%;
+    --sidebar-accent: 165 12% 11%;
+    --sidebar-accent-foreground: 150 12% 92%;
+    --sidebar-border: 165 12% 12%;
+    --sidebar-ring: 79 88% 57%;
+    --glow: 79 88% 57%;
+    --positive: 152 68% 50%;
+    --negative: 4 84% 64%;
+    --warning: 38 95% 58%;
+  }
+
+  /* Optional refined light variant — "Daylight Ledger". */
+  .light {
+    --background: 60 30% 98%;
+    --foreground: 165 25% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 165 25% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 165 25% 10%;
+    --primary: 84 62% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 75 18% 94%;
+    --secondary-foreground: 165 20% 16%;
+    --muted: 75 18% 94%;
+    --muted-foreground: 165 8% 42%;
+    --accent: 75 20% 93%;
+    --accent-foreground: 165 20% 16%;
+    --destructive: 4 74% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 80 14% 88%;
+    --input: 80 14% 86%;
+    --ring: 84 62% 40%;
+    --chart-1: 84 62% 40%;
+    --chart-2: 168 60% 38%;
+    --chart-3: 192 70% 42%;
+    --chart-4: 32 90% 48%;
+    --chart-5: 340 70% 50%;
+    --sidebar-background: 75 22% 96%;
+    --sidebar-foreground: 165 12% 30%;
+    --sidebar-primary: 84 62% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 75 18% 91%;
+    --sidebar-accent-foreground: 165 20% 16%;
+    --sidebar-border: 80 14% 87%;
+    --sidebar-ring: 84 62% 40%;
+    --glow: 84 62% 40%;
+    --positive: 152 60% 38%;
+    --negative: 4 74% 50%;
+    --warning: 32 90% 45%;
   }
 }
 
@@ -83,42 +145,146 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "ss01" 1, "cv01" 1, "calt" 1;
+    /* faint vignette + grain so flat dark never looks dead */
+    background-image:
+      radial-gradient(120% 80% at 50% -10%, hsl(168 40% 9% / 0.9), transparent 60%),
+      radial-gradient(70% 60% at 100% 0%, hsl(79 88% 30% / 0.06), transparent 55%);
+    background-attachment: fixed;
   }
 
   html {
     scroll-behavior: smooth;
   }
+
+  /* Numerals read as a ledger everywhere. */
+  .tabular,
+  [data-amount] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.25);
+    color: hsl(var(--foreground));
+  }
+
+  /* Slim, on-brand scrollbars */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(165 10% 22%); }
 }
 
 @layer utilities {
-  /* Soft, restrained elevation for a clean look */
+  /* ── Typography helpers ─────────────────────────────────────────────── */
+  .font-display { font-family: var(--font-display), sans-serif; }
+  .text-balance { text-wrap: balance; }
+
+  /* ── Elevation ──────────────────────────────────────────────────────── */
   .shadow-soft {
-    box-shadow: 0 1px 2px -1px hsl(240 10% 12% / 0.06), 0 2px 8px -4px hsl(240 10% 12% / 0.06);
+    box-shadow:
+      0 1px 0 0 hsl(150 20% 100% / 0.04) inset,
+      0 1px 2px -1px hsl(0 0% 0% / 0.5),
+      0 6px 18px -10px hsl(0 0% 0% / 0.6);
   }
-
   .shadow-medium {
-    box-shadow: 0 2px 6px -2px hsl(240 10% 12% / 0.08), 0 8px 20px -8px hsl(240 10% 12% / 0.08);
+    box-shadow:
+      0 1px 0 0 hsl(150 20% 100% / 0.05) inset,
+      0 8px 30px -12px hsl(0 0% 0% / 0.7);
+  }
+  .light .shadow-soft {
+    box-shadow: 0 1px 2px -1px hsl(165 25% 12% / 0.08), 0 4px 14px -8px hsl(165 25% 12% / 0.1);
+  }
+  .light .shadow-medium {
+    box-shadow: 0 4px 12px -4px hsl(165 25% 12% / 0.12), 0 16px 40px -16px hsl(165 25% 12% / 0.14);
   }
 
-  .dark .shadow-soft {
-    box-shadow: 0 1px 2px -1px hsl(0 0% 0% / 0.4), 0 2px 8px -4px hsl(0 0% 0% / 0.3);
+  /* ── Glow accents ───────────────────────────────────────────────────── */
+  .glow-primary {
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.4), 0 0 28px -4px hsl(var(--glow) / 0.45);
+  }
+  .text-glow { text-shadow: 0 0 24px hsl(var(--glow) / 0.45); }
+  .ring-glow:hover { box-shadow: 0 0 0 1px hsl(var(--primary) / 0.5), 0 0 36px -6px hsl(var(--glow) / 0.4); }
+
+  /* ── Surfaces & texture ─────────────────────────────────────────────── */
+  .surface {
+    background:
+      linear-gradient(180deg, hsl(168 16% 9% / 0.7), hsl(168 16% 7% / 0.7));
+    border: 1px solid hsl(var(--border));
+    backdrop-filter: blur(8px);
+  }
+  .bg-grid {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.5) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.5) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(80% 60% at 50% 0%, #000 30%, transparent 80%);
+  }
+  .bg-grid-fade {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.35) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.35) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
   }
 
-  .dark .shadow-medium {
-    box-shadow: 0 2px 6px -2px hsl(0 0% 0% / 0.5), 0 8px 20px -8px hsl(0 0% 0% / 0.4);
+  /* Aurora blobs for the hero */
+  .aurora-blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(80px);
+    opacity: 0.5;
+    will-change: transform;
   }
 
-  .transition-smooth {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  /* gradient text */
+  .text-gradient {
+    background: linear-gradient(120deg, hsl(var(--foreground)) 30%, hsl(var(--primary)) 120%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
-  .hover-lift {
-    @apply transition-smooth;
+  /* shimmer skeleton / sweep */
+  .shimmer {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(150 20% 100% / 0.06) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer;
   }
 
+  /* ── Motion ─────────────────────────────────────────────────────────── */
+  .transition-smooth { transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1); }
+  .hover-lift { @apply transition-smooth; }
   .hover-lift:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     @apply shadow-medium;
   }
+
+  /* staggered reveal — set --d on the element */
+  .reveal { opacity: 0; animation: fade-up 0.7s cubic-bezier(0.16,1,0.3,1) forwards; animation-delay: var(--d, 0ms); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; animation: none; }
+    .animate-aurora, .animate-float, .animate-marquee, .animate-pulse-glow { animation: none !important; }
+  }
 }
+
+/* Explicit keyframes so .reveal works even if no animate-* utility references them. */
+@keyframes fade-up {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+

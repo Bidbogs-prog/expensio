@@ -7,19 +7,22 @@ import { MonthNavigator } from "@/components/monthNavigator";
 import { TransactionForm } from "@/components/transaction-form";
 import { TransactionTable } from "@/components/transaction-table";
 import { Card } from "@/components/ui/card";
-import { useExpenseStore } from "@/useExpenseStore";
+import { useUiStore } from "@/hooks/use-ui-store";
 
 export default function IncomePage() {
-  const error = useExpenseStore((s) => s.error);
+  const error = useUiStore((s) => s.error);
 
   return (
     <div className="min-h-screen">
-      <PageHeader title="Income" subtitle="Track and manage your income sources">
+      <PageHeader eyebrow="Earnings" title="Income" subtitle="Track and manage your income sources">
+        <div className="hidden sm:block">
+          <MonthNavigator />
+        </div>
         <CurrencySelect />
       </PageHeader>
 
-      <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6">
-        <div className="flex justify-center">
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6">
+        <div className="flex justify-center sm:hidden">
           <MonthNavigator />
         </div>
 

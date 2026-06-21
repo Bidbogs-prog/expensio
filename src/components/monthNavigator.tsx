@@ -1,12 +1,12 @@
 'use client';
 
-import { useExpenseStore } from '@/useExpenseStore';
+import { useUiStore } from '@/hooks/use-ui-store';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function MonthNavigator() {
-  const currentMonth = useExpenseStore((state) => state.currentMonth);
-  const setCurrentMonth = useExpenseStore((state) => state.setCurrentMonth);
+  const currentMonth = useUiStore((state) => state.currentMonth);
+  const setCurrentMonth = useUiStore((state) => state.setCurrentMonth);
 
   const formatted = new Date(currentMonth + '-01').toLocaleDateString('en-US', {
     month: 'long',
@@ -23,18 +23,18 @@ export function MonthNavigator() {
   const isCurrentMonth = currentMonth === new Date().toISOString().slice(0, 7);
 
   return (
-    <div className="flex items-center gap-1 rounded-full border bg-card p-1 shadow-soft">
+    <div className="flex items-center gap-1 rounded-full border border-border bg-card/70 p-1 shadow-soft backdrop-blur">
       <Button
         variant="ghost"
         size="icon"
         onClick={() => navigate('prev')}
-        className="h-8 w-8 rounded-full"
+        className="h-8 w-8 rounded-full hover:text-primary"
         aria-label="Previous month"
       >
         <ChevronLeft className="h-4 w-4" />
       </Button>
 
-      <span className="min-w-[130px] text-center text-sm font-medium">
+      <span className="min-w-[140px] text-center text-sm font-semibold tracking-tight">
         {formatted}
       </span>
 
@@ -43,7 +43,7 @@ export function MonthNavigator() {
         size="icon"
         onClick={() => navigate('next')}
         disabled={isCurrentMonth}
-        className="h-8 w-8 rounded-full"
+        className="h-8 w-8 rounded-full hover:text-primary"
         aria-label="Next month"
       >
         <ChevronRight className="h-4 w-4" />

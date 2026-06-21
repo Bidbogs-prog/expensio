@@ -7,16 +7,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useExpenseStore } from "@/useExpenseStore";
+import { useCurrency, useSetCurrency } from "@/lib/queries";
+import type { Currency } from "@/types";
 
 const CURRENCIES = ["USD", "MAD", "EUR"] as const;
 
 export function CurrencySelect() {
-  const currency = useExpenseStore((s) => s.currency);
-  const setCurrency = useExpenseStore((s) => s.setCurrency);
+  const currency = useCurrency();
+  const setCurrency = useSetCurrency();
 
   return (
-    <Select onValueChange={setCurrency} value={currency}>
+    <Select onValueChange={(v) => setCurrency.mutate(v as Currency)} value={currency}>
       <SelectTrigger className="w-[88px] shadow-soft" aria-label="Currency">
         <SelectValue />
       </SelectTrigger>

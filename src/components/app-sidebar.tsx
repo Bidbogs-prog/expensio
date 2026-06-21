@@ -12,39 +12,39 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Loader2, LogOut, TrendingDown, Wallet } from "lucide-react";
+import {
+  LayoutDashboard,
+  Loader2,
+  LogOut,
+  Sparkles,
+  TrendingDown,
+  Wallet,
+  Zap,
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { BrandMark } from "@/components/brand-mark";
 import { supabase } from "@/lib/supabase";
-import { useState, useEffect } from "react";
-import type { User } from "@supabase/supabase-js";
+import { useState } from "react";
+import { useAuthUser } from "@/lib/auth-context";
+import { usePlan } from "@/lib/plan";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Insights", url: "/insights", icon: Sparkles, badge: "AI" },
   { title: "Expenses", url: "/expenses", icon: TrendingDown },
   { title: "Income", url: "/income", icon: Wallet },
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { isPro, openUpgrade } = usePlan();
+  const user = useAuthUser();
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   const signOut = async () => {
     try {
@@ -58,37 +58,30 @@ export function AppSidebar() {
   };
 
   const hasAvatar = user?.user_metadata?.avatar_url && !user.is_anonymous;
+  const displayName =
+    user?.user_metadata?.full_name ||
+    (user?.is_anonymous ? "Demo User" : user?.email?.split("@")[0]) ||
+    "Account";
 
   return (
     <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="px-4 pt-4">
-        <div className="flex items-center gap-3">
-          {hasAvatar ? (
-            <div className="relative h-10 w-10 overflow-hidden rounded-xl shadow-soft">
-              <Image
-                src={user!.user_metadata.avatar_url}
-                alt="User avatar"
-                width={40}
-                height={40}
-                className="object-cover"
-                unoptimized
-              />
-            </div>
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-soft">
-              <Image src="/anonymous.png" alt="" width={40} height={40} />
-            </div>
-          )}
+        <Link href="/" className="flex items-center gap-2.5">
+          <BrandMark className="h-9 w-9 shrink-0" />
           <div className="min-w-0">
-            <h2 className="truncate text-base font-bold">Expensio</h2>
-            <p className="truncate text-xs text-muted-foreground">Finance Tracker</p>
+            <h2 className="truncate font-display text-base font-bold tracking-tight">
+              Expensio
+            </h2>
+            <p className="truncate text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+              {isPro ? "Pro" : "Money clarity"}
+            </p>
           </div>
-        </div>
+        </Link>
       </SidebarHeader>
 
-      <SidebarContent className="pt-2">
+      <SidebarContent className="pt-3">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Navigation
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -97,7 +90,15 @@ export function AppSidebar() {
                 const isActive = pathname === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className={cn(
+                        "relative transition-smooth",
+                        isActive &&
+                          "before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-primary"
+                      )}
+                    >
                       <Link href={item.url}>
                         <item.icon
                           className={cn(
@@ -108,6 +109,11 @@ export function AppSidebar() {
                         <span className={isActive ? "font-medium" : undefined}>
                           {item.title}
                         </span>
+                        {item.badge && (
+                          <span className="ml-auto rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-primary">
+                            {item.badge}
+                          </span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -118,11 +124,42 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="gap-2 p-3">
-        <div className="flex items-center justify-between rounded-lg border bg-sidebar-accent/40 px-3 py-1.5">
-          <span className="text-xs font-medium text-muted-foreground">Theme</span>
+      <SidebarFooter className="gap-3 p-3">
+        {!isPro && (
+          <button
+            onClick={() => openUpgrade()}
+            className="group relative overflow-hidden rounded-xl border border-primary/25 bg-gradient-to-br from-primary/15 to-primary/5 p-3 text-left transition-smooth hover:border-primary/40"
+          >
+            <div className="aurora-blob -right-6 -top-8 h-20 w-20 bg-primary/30 animate-aurora" />
+            <div className="relative flex items-center gap-2 text-sm font-semibold">
+              <Zap className="h-4 w-4 text-primary" />
+              Go Pro
+            </div>
+            <p className="relative mt-1 text-xs text-muted-foreground">
+              Unlimited AI insights, forecasts & analytics.
+            </p>
+          </button>
+        )}
+
+        <div className="flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-2">
+          {hasAvatar ? (
+            <Image
+              src={user!.user_metadata.avatar_url}
+              alt=""
+              width={28}
+              height={28}
+              className="h-7 w-7 rounded-full object-cover"
+              unoptimized
+            />
+          ) : (
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+              {displayName.charAt(0).toUpperCase()}
+            </span>
+          )}
+          <span className="min-w-0 flex-1 truncate text-xs font-medium">{displayName}</span>
           <ThemeToggle />
         </div>
+
         <Button
           onClick={signOut}
           variant="outline"

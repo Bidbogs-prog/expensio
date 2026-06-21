@@ -1,28 +1,36 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
 import { AuthProvider } from "@/components/authProvider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Editorial display face for headings + big numerals.
+const display = Bricolage_Grotesque({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+// Refined, characterful body face.
+const sans = Hanken_Grotesk({
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Ledger numerals.
+const mono = JetBrains_Mono({
+  variable: "--font-mono",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Expensio",
-  description: "Track expenses, manage income, stay on top of your finances.",
+  title: "Expensio — Money clarity, on autopilot",
+  description:
+    "A categorical expense tracker with AI recommendations, overspend warnings, and analytics. Know exactly where your money goes.",
 };
 
-// Runs before paint to set the theme class, avoiding a flash of the wrong theme.
-const themeScript = `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`;
+// Runs before paint to set the theme class, avoiding a flash. Defaults to dark (Midnight Ledger).
+const themeScript = `(function(){try{var t=localStorage.getItem('theme');var l=t==='light';document.documentElement.classList.toggle('light',l);document.documentElement.classList.toggle('dark',!l);}catch(e){document.documentElement.classList.add('dark');}})();`;
 
 export default function RootLayout({
   children,
@@ -30,21 +38,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`h-full dark ${display.variable} ${sans.variable} ${mono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}
-      >
-        <AuthProvider>
-          <SidebarProvider>
-            <div className="flex h-full w-full">
-              <AppSidebar />
-              <main className="relative flex-1 overflow-auto">{children}</main>
-            </div>
-          </SidebarProvider>
-        </AuthProvider>
+      <body className="font-sans antialiased h-full">
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

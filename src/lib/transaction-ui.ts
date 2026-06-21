@@ -30,24 +30,25 @@ export interface TxConfig {
   normalizeCategory: (value: string) => string;
 }
 
+// Vivid, dark-surface-friendly palettes tuned for the Midnight Ledger theme.
 const EXPENSE_PALETTE = [
-  "#f43f5e", // rose
+  "#fb7185", // rose
+  "#fbbf24", // amber
   "#fb923c", // orange
-  "#f59e0b", // amber
-  "#a855f7", // purple
-  "#ec4899", // pink
-  "#6366f1", // indigo
-  "#14b8a6", // teal
+  "#f472b6", // pink
+  "#c084fc", // violet
+  "#f87171", // red
+  "#22d3ee", // cyan
 ];
 
 const INCOME_PALETTE = [
-  "#10b981", // emerald
-  "#14b8a6", // teal
-  "#06b6d4", // cyan
-  "#3b82f6", // blue
-  "#6366f1", // indigo
-  "#8b5cf6", // violet
-  "#f59e0b", // amber
+  "#a3e635", // lime (brand)
+  "#34d399", // emerald
+  "#2dd4bf", // teal
+  "#22d3ee", // cyan
+  "#38bdf8", // sky
+  "#4ade80", // green
+  "#facc15", // gold
 ];
 
 export const TX_CONFIG: Record<TxKind, TxConfig> = {
