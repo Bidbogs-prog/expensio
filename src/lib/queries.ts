@@ -21,6 +21,12 @@ type FormValues = ExpenseFormValues | IncomeFormValues;
 const SETTINGS_KEY = ["settings"] as const;
 const keyFor = (kind: TxKind) => [kind] as const;
 
+// The shared family ledger (`['group-ledger', ...]`) is a separate query that
+// includes this user's rows, so any personal-transaction change must refresh it.
+type QC = ReturnType<typeof useQueryClient>;
+const invalidateGroupLedger = (qc: QC) => () =>
+  qc.invalidateQueries({ queryKey: ["group-ledger"] });
+
 function listApi(kind: TxKind) {
   return kind === "expense" ? expensesApi : incomeApi;
 }
@@ -82,6 +88,7 @@ export function useAddTransaction(kind: TxKind) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(key, ctx.prev);
     },
+    onSettled: invalidateGroupLedger(qc),
   });
 }
 
@@ -109,6 +116,7 @@ export function useUpdateTransaction(kind: TxKind) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(key, ctx.prev);
     },
+    onSettled: invalidateGroupLedger(qc),
   });
 }
 
@@ -127,6 +135,7 @@ export function useDeleteTransaction(kind: TxKind) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(key, ctx.prev);
     },
+    onSettled: invalidateGroupLedger(qc),
   });
 }
 
@@ -163,6 +172,7 @@ export function useRenameCategory(kind: TxKind) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(key, ctx.prev);
     },
+    onSettled: invalidateGroupLedger(qc),
   });
 }
 

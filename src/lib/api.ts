@@ -25,6 +25,13 @@ async function ensureAuthenticated() {
   return { user: session.user, session }
 }
 
+// Returns the current authenticated user's id (from the local session — no
+// network round-trip). Throws if there is no active session.
+export async function getCurrentUserId(): Promise<string> {
+  const { user } = await ensureAuthenticated()
+  return user.id
+}
+
 // Enhanced error handling wrapper
 async function withAuth<T>(operation: (userId: string) => Promise<T>): Promise<T> {
   try {
