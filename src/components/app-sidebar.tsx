@@ -75,7 +75,7 @@ export function AppSidebar() {
           <BrandMark className="h-9 w-9 shrink-0" />
           <div className="min-w-0">
             <h2 className="truncate font-display text-base font-bold tracking-tight">
-              Expensio
+              Expens<span className="text-primary">io</span>
             </h2>
             <p className="truncate text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
               {isPro ? "Pro" : "Money clarity"}

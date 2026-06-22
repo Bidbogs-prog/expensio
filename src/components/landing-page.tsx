@@ -3,7 +3,6 @@
 import {
   AlertTriangle,
   ArrowRight,
-  BarChart3,
   Check,
   Lightbulb,
   PieChart,
@@ -437,12 +436,6 @@ function HeroMock() {
             <span className="font-semibold">AI:</span> Cut dining by 420 MAD to hit your savings goal.
           </p>
         </div>
-      </div>
-
-      {/* floating badge */}
-      <div className="absolute -left-4 bottom-8 hidden rounded-xl border border-border bg-card px-3 py-2 shadow-medium sm:flex sm:items-center sm:gap-2">
-        <BarChart3 className="h-4 w-4 text-primary" />
-        <span className="text-xs font-medium">Forecast ready</span>
       </div>
     </div>
   );
