@@ -22,18 +22,34 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { useAddTransaction, useRenameCategory, useTransactions } from "@/lib/queries";
+import {
+  useAddTransaction,
+  useGroupTransactions,
+  useRenameCategory,
+  useTransactions,
+} from "@/lib/queries";
 import { expenseFormSchema, type ExpenseFormValues } from "@/form-schemas";
 import { TX_CONFIG, formatCategory, type TxKind } from "@/lib/transaction-ui";
 
 const CUSTOM_VALUE = "__custom__";
 
-export function TransactionForm({ kind }: { kind: TxKind }) {
+export function TransactionForm({
+  kind,
+  groupId = null,
+}: {
+  kind: TxKind;
+  groupId?: string | null;
+}) {
   const cfg = TX_CONFIG[kind];
+  const canManage = !groupId; // renaming shared categories would touch other members' rows
 
-  const add = useAddTransaction(kind);
-  const rename = useRenameCategory(kind);
-  const { data: items = [], isLoading } = useTransactions(kind);
+  const add = useAddTransaction(kind, groupId);
+  const rename = useRenameCategory(kind, groupId);
+  const personal = useTransactions(kind);
+  const group = useGroupTransactions(kind, groupId);
+  const source = groupId ? group : personal;
+  const items = source.data ?? [];
+  const isLoading = source.isLoading;
   const busy = isLoading || add.isPending || rename.isPending;
 
   const [showCustom, setShowCustom] = useState(false);
@@ -118,19 +134,21 @@ export function TransactionForm({ kind }: { kind: TxKind }) {
             <h3 className="font-display text-base font-bold tracking-tight">{cfg.addHeading}</h3>
             <p className="text-sm text-muted-foreground">{cfg.addSubheading}</p>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowManage((v) => !v)}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            <Settings2 className="mr-1 h-3.5 w-3.5" />
-            Manage categories
-          </Button>
+          {canManage && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowManage((v) => !v)}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              <Settings2 className="mr-1 h-3.5 w-3.5" />
+              Manage categories
+            </Button>
+          )}
         </div>
 
-        {showManage && (
+        {canManage && showManage && (
           <div className="space-y-1 rounded-lg border bg-muted/30 p-3">
             <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Categories

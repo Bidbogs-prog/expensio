@@ -9,7 +9,6 @@ import type {
   IncomingInvite,
   PendingInvite,
   Profile,
-  Transaction,
 } from "@/types";
 
 export const groupsApi = {
@@ -61,18 +60,6 @@ export const groupsApi = {
       .eq("group_id", groupId)
       .eq("user_id", userId);
     if (error) throw new Error(error.message);
-  },
-
-  /** Combined expenses + income for the given members (RLS grants co-member reads). */
-  async ledger(memberIds: string[]): Promise<{ expenses: Transaction[]; income: Transaction[] }> {
-    if (memberIds.length === 0) return { expenses: [], income: [] };
-    const [exp, inc] = await Promise.all([
-      supabase.from("expenses").select("*").in("user_id", memberIds).order("date", { ascending: false }),
-      supabase.from("income").select("*").in("user_id", memberIds).order("date", { ascending: false }),
-    ]);
-    if (exp.error) throw new Error(exp.error.message);
-    if (inc.error) throw new Error(inc.error.message);
-    return { expenses: exp.data ?? [], income: inc.data ?? [] };
   },
 };
 

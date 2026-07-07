@@ -19,7 +19,7 @@ export function useRealtimeLedger(enabled: boolean) {
     const invalidateSoon = () => {
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => {
-        qc.invalidateQueries({ queryKey: ["group-ledger"] });
+        qc.invalidateQueries({ queryKey: ["group-tx"] });
       }, 300);
     };
 

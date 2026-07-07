@@ -4,8 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { CurrencySelect } from "@/components/currency-select";
 import { MonthNavigator } from "@/components/monthNavigator";
-import { TransactionForm } from "@/components/transaction-form";
-import { TransactionTable } from "@/components/transaction-table";
+import { TransactionWorkspace } from "@/components/transaction-workspace";
 import { Card } from "@/components/ui/card";
 import { useUiStore } from "@/hooks/use-ui-store";
 
@@ -33,11 +32,7 @@ export default function ExpensesPage() {
           </Card>
         )}
 
-        <Card className="p-4 shadow-soft sm:p-6">
-          <TransactionForm kind="expense" />
-        </Card>
-
-        <TransactionTable kind="expense" />
+        <TransactionWorkspace kind="expense" />
       </div>
     </div>
   );

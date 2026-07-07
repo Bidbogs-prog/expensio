@@ -7,7 +7,6 @@ import { groupsApi, invitesApi, profilesApi } from "./groups-api";
 export const groupKeys = {
   list: ["groups"] as const,
   members: (id: string) => ["group-members", id] as const,
-  ledger: (ids: string[]) => ["group-ledger", ids] as const,
   incoming: ["incoming-invites"] as const,
   pending: (id: string) => ["group-pending", id] as const,
   search: (q: string) => ["search-users", q] as const,
@@ -23,16 +22,6 @@ export function useGroupMembers(groupId: string | null) {
     queryKey: groupKeys.members(groupId ?? "none"),
     queryFn: () => groupsApi.members(groupId as string),
     enabled: !!groupId,
-  });
-}
-
-/** Combined ledger for a set of member ids (sorted key keeps the cache stable). */
-export function useGroupLedger(memberIds: string[]) {
-  const sorted = [...memberIds].sort();
-  return useQuery({
-    queryKey: groupKeys.ledger(sorted),
-    queryFn: () => groupsApi.ledger(sorted),
-    enabled: sorted.length > 0,
   });
 }
 

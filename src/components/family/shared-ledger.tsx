@@ -53,7 +53,7 @@ export function SharedLedger({
     <Card className="overflow-hidden shadow-soft">
       <div className="border-b border-border/60 px-5 py-4">
         <h2 className="font-display text-base font-bold tracking-tight">Household ledger</h2>
-        <p className="text-xs text-muted-foreground">Everyone's expenses & income, combined</p>
+        <p className="text-xs text-muted-foreground">Shared expenses &amp; income added to this group</p>
       </div>
 
       {rows.length === 0 ? (
@@ -61,9 +61,10 @@ export function SharedLedger({
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Inbox className="h-6 w-6" />
           </div>
-          <h3 className="font-semibold">Nothing logged this month</h3>
+          <h3 className="font-semibold">Nothing shared this month</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Transactions from any member will show up here.
+            Add a shared expense or income from the Expenses / Income tabs — pick this
+            household as the scope — and it shows up here for everyone.
           </p>
         </div>
       ) : (

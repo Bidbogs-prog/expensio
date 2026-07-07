@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, Inbox, Loader2, Pencil, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,11 +20,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { MemberAvatar } from "@/components/member-avatar";
 import { cn } from "@/lib/utils";
-import { useCurrency, useDeleteTransaction, useUpdateTransaction, useTransactions } from "@/lib/queries";
-import { useMonthTransactions, useMonthTotals } from "@/hooks/use-derived";
+import {
+  useCurrency,
+  useDeleteTransaction,
+  useGroupTransactions,
+  useTransactions,
+  useUpdateTransaction,
+} from "@/lib/queries";
+import { useCurrentMonth } from "@/hooks/use-derived";
 import { TX_CONFIG, formatCategory, type TxKind } from "@/lib/transaction-ui";
-import type { Transaction } from "@/types";
+import { memberLabel } from "@/lib/member-ui";
+import type { GroupMember, Transaction } from "@/types";
 
 interface EditValues {
   category: string;
@@ -35,18 +43,37 @@ interface EditValues {
 
 const EMPTY_EDIT: EditValues = { category: "", name: "", amount: "", date: "" };
 
-export function TransactionTable({ kind }: { kind: TxKind }) {
+export function TransactionTable({
+  kind,
+  groupId = null,
+  members,
+  currentUserId,
+}: {
+  kind: TxKind;
+  groupId?: string | null;
+  /** For family scope: member identity by user id. */
+  members?: Map<string, GroupMember>;
+  currentUserId?: string | null;
+}) {
   const cfg = TX_CONFIG[kind];
   const isExpense = kind === "expense";
+  const isGroup = !!groupId;
 
+  const month = useCurrentMonth();
   const currency = useCurrency();
-  const { isLoading } = useTransactions(kind);
-  const items = useMonthTransactions(kind);
-  const totals = useMonthTotals();
-  const del = useDeleteTransaction(kind);
-  const upd = useUpdateTransaction(kind);
+  const personal = useTransactions(kind);
+  const group = useGroupTransactions(kind, groupId);
+  const source = isGroup ? group : personal;
+  const isLoading = source.isLoading;
 
-  const total = isExpense ? totals.expenseTotal : totals.incomeTotal;
+  const items = useMemo(
+    () => (source.data ?? []).filter((t) => t.date?.startsWith(month)),
+    [source.data, month]
+  );
+  const total = useMemo(() => items.reduce((s, t) => s + Number(t.amount), 0), [items]);
+
+  const del = useDeleteTransaction(kind, groupId);
+  const upd = useUpdateTransaction(kind, groupId);
   const busy = isLoading || del.isPending || upd.isPending;
 
   const allCategories = [
@@ -56,6 +83,8 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<EditValues>(EMPTY_EDIT);
 
+  const canEdit = (t: Transaction) => !isGroup || t.user_id === currentUserId;
+
   const startEditing = (item: Transaction) => {
     if (!item.id) return;
     setEditingId(item.id);
@@ -63,9 +92,7 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
       category: item.category,
       name: item.name,
       amount: String(item.amount),
-      date: item.date
-        ? item.date.split("T")[0]
-        : new Date().toISOString().split("T")[0],
+      date: item.date ? item.date.split("T")[0] : new Date().toISOString().split("T")[0],
     });
   };
 
@@ -75,8 +102,7 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
   };
 
   const saveEdit = async () => {
-    if (!editingId || !editValues.name || !editValues.amount || !editValues.category)
-      return;
+    if (!editingId || !editValues.name || !editValues.amount || !editValues.category) return;
     await upd.mutateAsync({ id: editingId, values: editValues });
     cancelEditing();
   };
@@ -89,6 +115,9 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
           day: "numeric",
         })
       : "—";
+
+  const labelFor = (userId: string) =>
+    memberLabel(members?.get(userId)?.profile ?? null, "Member");
 
   return (
     <Card className="overflow-hidden shadow-soft">
@@ -105,30 +134,38 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
             <Inbox className="h-6 w-6" />
           </div>
           <h3 className="font-semibold">{cfg.emptyTitle}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">{cfg.emptyHint}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isGroup
+              ? `Shared ${kind} added here is visible to everyone in this group.`
+              : cfg.emptyHint}
+          </p>
         </div>
       ) : (
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[22%]">Category</TableHead>
-                <TableHead className="w-[26%]">{cfg.nameColumn}</TableHead>
-                <TableHead className="w-[18%]">Date</TableHead>
-                <TableHead className="w-[18%] text-right">Amount</TableHead>
-                <TableHead className="w-[16%] text-center">Actions</TableHead>
+                {isGroup && <TableHead className="w-[18%]">Member</TableHead>}
+                <TableHead className="w-[20%]">Category</TableHead>
+                <TableHead className="w-[24%]">{cfg.nameColumn}</TableHead>
+                <TableHead className="w-[16%]">Date</TableHead>
+                <TableHead className="w-[16%] text-right">Amount</TableHead>
+                <TableHead className="w-[14%] text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.map((item) =>
                 editingId === item.id ? (
                   <TableRow key={item.id}>
+                    {isGroup && (
+                      <TableCell>
+                        <MemberBadge label={labelFor(item.user_id)} userId={item.user_id} members={members} />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Select
                         value={editValues.category}
-                        onValueChange={(val) =>
-                          setEditValues((p) => ({ ...p, category: val }))
-                        }
+                        onValueChange={(val) => setEditValues((p) => ({ ...p, category: val }))}
                       >
                         <SelectTrigger className="h-8 text-sm">
                           <SelectValue />
@@ -145,9 +182,7 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
                     <TableCell>
                       <Input
                         value={editValues.name}
-                        onChange={(e) =>
-                          setEditValues((p) => ({ ...p, name: e.target.value }))
-                        }
+                        onChange={(e) => setEditValues((p) => ({ ...p, name: e.target.value }))}
                         className="h-8 text-sm"
                       />
                     </TableCell>
@@ -155,9 +190,7 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
                       <Input
                         type="date"
                         value={editValues.date}
-                        onChange={(e) =>
-                          setEditValues((p) => ({ ...p, date: e.target.value }))
-                        }
+                        onChange={(e) => setEditValues((p) => ({ ...p, date: e.target.value }))}
                         className="h-8 text-sm"
                       />
                     </TableCell>
@@ -165,9 +198,7 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
                       <Input
                         type="number"
                         value={editValues.amount}
-                        onChange={(e) =>
-                          setEditValues((p) => ({ ...p, amount: e.target.value }))
-                        }
+                        onChange={(e) => setEditValues((p) => ({ ...p, amount: e.target.value }))}
                         className="h-8 text-right text-sm"
                       />
                     </TableCell>
@@ -184,6 +215,11 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
                   </TableRow>
                 ) : (
                   <TableRow key={item.id} className="transition-colors">
+                    {isGroup && (
+                      <TableCell>
+                        <MemberBadge label={labelFor(item.user_id)} userId={item.user_id} members={members} />
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <span className={cn("h-2 w-2 rounded-full", cfg.dotClass)} />
@@ -191,32 +227,36 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
                       </div>
                     </TableCell>
                     <TableCell>{formatCategory(item.name)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(item.date)}
-                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDate(item.date)}</TableCell>
                     <TableCell className={cn("text-right font-mono font-semibold tabular", cfg.amountClass)}>
                       {item.amount.toLocaleString()} {currency}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => startEditing(item)}
-                          disabled={busy}
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => item.id && del.mutate(item.id)}
-                          disabled={busy}
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEdit(item) ? (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => startEditing(item)}
+                              disabled={busy}
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => item.id && del.mutate(item.id)}
+                              disabled={busy}
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/60">—</span>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -224,7 +264,7 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
               )}
 
               <TableRow className="border-t-2 bg-muted/30 hover:bg-muted/30">
-                <TableCell colSpan={3} className="font-display text-base font-bold">
+                <TableCell colSpan={isGroup ? 4 : 3} className="font-display text-base font-bold">
                   {cfg.totalLabel}
                 </TableCell>
                 <TableCell className={cn("text-right font-mono text-base font-bold tabular", cfg.amountClass)}>
@@ -237,5 +277,22 @@ export function TransactionTable({ kind }: { kind: TxKind }) {
         </div>
       )}
     </Card>
+  );
+}
+
+function MemberBadge({
+  label,
+  userId,
+  members,
+}: {
+  label: string;
+  userId: string;
+  members?: Map<string, GroupMember>;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <MemberAvatar id={userId} label={label} avatarUrl={members?.get(userId)?.profile?.avatar_url} size={24} />
+      <span className="truncate text-sm">{label}</span>
+    </div>
   );
 }

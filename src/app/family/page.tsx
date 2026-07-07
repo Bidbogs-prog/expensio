@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Loader2, Plus, TrendingDown, TrendingUp, Users, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { CurrencySelect } from "@/components/currency-select";
@@ -15,11 +16,11 @@ import { InvitePeople } from "@/components/family/invite-people";
 import { SharedLedger } from "@/components/family/shared-ledger";
 import { MemberBreakdown } from "@/components/family/member-breakdown";
 import { useAuthUser } from "@/lib/auth-context";
-import { useCurrency } from "@/lib/queries";
+import { useCurrency, useGroupTransactions } from "@/lib/queries";
 import { useUiStore } from "@/hooks/use-ui-store";
 import { useRealtimeLedger } from "@/hooks/use-realtime-ledger";
 import { computeAnalytics } from "@/lib/insights";
-import { useGroups, useGroupLedger, useGroupMembers } from "@/lib/group-queries";
+import { useGroups, useGroupMembers } from "@/lib/group-queries";
 import { cn } from "@/lib/utils";
 
 export default function FamilyPage() {
@@ -41,9 +42,13 @@ export default function FamilyPage() {
   const activeGroup = groups?.find((g) => g.id === activeId) ?? null;
   const { data: members } = useGroupMembers(activeId);
   const memberIds = useMemo(() => (members ?? []).map((m) => m.user_id), [members]);
-  const { data: ledger, isLoading: ledgerLoading } = useGroupLedger(memberIds);
 
-  // Live household updates: refresh the ledger when any visible member changes a row.
+  // The shared budget = transactions tagged to this group (group_id), across members.
+  const { data: groupExpenses = [], isLoading: expLoading } = useGroupTransactions("expense", activeId);
+  const { data: groupIncome = [], isLoading: incLoading } = useGroupTransactions("income", activeId);
+  const ledgerLoading = expLoading || incLoading;
+
+  // Live household updates: refresh when any member changes a shared row.
   useRealtimeLedger(!!activeId);
 
   const memberMap = useMemo(
@@ -52,17 +57,17 @@ export default function FamilyPage() {
   );
 
   const monthExpenses = useMemo(
-    () => (ledger?.expenses ?? []).filter((t) => t.date?.startsWith(month)),
-    [ledger, month]
+    () => groupExpenses.filter((t) => t.date?.startsWith(month)),
+    [groupExpenses, month]
   );
   const monthIncome = useMemo(
-    () => (ledger?.income ?? []).filter((t) => t.date?.startsWith(month)),
-    [ledger, month]
+    () => groupIncome.filter((t) => t.date?.startsWith(month)),
+    [groupIncome, month]
   );
 
   const analytics = useMemo(
-    () => computeAnalytics(ledger?.expenses ?? [], ledger?.income ?? [], month),
-    [ledger, month]
+    () => computeAnalytics(groupExpenses, groupIncome, month),
+    [groupExpenses, groupIncome, month]
   );
 
   const fmt = (n: number) => Math.round(n).toLocaleString();
@@ -112,6 +117,21 @@ export default function FamilyPage() {
                 <Plus className="h-4 w-4" />
                 New group
               </Button>
+
+              <div className="ml-auto flex items-center gap-2">
+                <Button asChild variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground">
+                  <Link href="/expenses">
+                    <TrendingDown className="h-4 w-4" />
+                    Add shared expense
+                  </Link>
+                </Button>
+                <Button asChild variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground">
+                  <Link href="/income">
+                    <TrendingUp className="h-4 w-4" />
+                    Add shared income
+                  </Link>
+                </Button>
+              </div>
             </div>
 
             {/* Stats */}

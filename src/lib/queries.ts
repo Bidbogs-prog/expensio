@@ -1,17 +1,25 @@
 // src/lib/queries.ts
 // React Query data layer. All Supabase server-state access + optimistic
-// mutations live here, replacing the hand-rolled Zustand CRUD store.
+// mutations live here.
+//
+// Scope model: every transaction hook takes an optional `groupId`.
+//   groupId == null  → personal budget  (cache key [kind])
+//   groupId == "…"   → family budget     (cache key ["group-tx", kind, groupId])
+// Personal and family caches are fully independent, so the two budgets never
+// bleed into each other.
 import {
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { expensesApi, incomeApi, userSettingsApi } from "./api";
+import { expensesApi, incomeApi, templatesApi, userSettingsApi } from "./api";
 import type { TxKind } from "@/lib/transaction-ui";
 import type {
+  BudgetTemplate,
   Currency,
   ExpenseFormValues,
   IncomeFormValues,
+  TemplateItem,
   Transaction,
   UserSettings,
 } from "@/types";
@@ -19,32 +27,43 @@ import type {
 type FormValues = ExpenseFormValues | IncomeFormValues;
 
 const SETTINGS_KEY = ["settings"] as const;
-const keyFor = (kind: TxKind) => [kind] as const;
 
-// The shared family ledger (`['group-ledger', ...]`) is a separate query that
-// includes this user's rows, so any personal-transaction change must refresh it.
-type QC = ReturnType<typeof useQueryClient>;
-const invalidateGroupLedger = (qc: QC) => () =>
-  qc.invalidateQueries({ queryKey: ["group-ledger"] });
+/** Cache key for a kind + scope. Personal keeps the bare [kind] key. */
+export function txKey(kind: TxKind, groupId?: string | null) {
+  return (groupId ? ["group-tx", kind, groupId] : [kind]) as readonly unknown[];
+}
+const templatesKey = (kind: TxKind, groupId?: string | null) =>
+  ["templates", kind, groupId ?? "personal"] as const;
 
 function listApi(kind: TxKind) {
   return kind === "expense" ? expensesApi : incomeApi;
 }
 
-function toPayload(values: FormValues) {
+function toPayload(values: FormValues, groupId?: string | null) {
   return {
     category: values.category,
     name: values.name,
     amount: Number(values.amount),
     date: values.date,
+    group_id: groupId ?? null,
   };
 }
 
 // ── Queries ──────────────────────────────────────────────────────────────────
+/** Personal transactions of one kind. */
 export function useTransactions(kind: TxKind) {
   return useQuery({
-    queryKey: keyFor(kind),
+    queryKey: txKey(kind),
     queryFn: (): Promise<Transaction[]> => listApi(kind).getAll(),
+  });
+}
+
+/** Shared (family) transactions of one kind for a group. Disabled when no group. */
+export function useGroupTransactions(kind: TxKind, groupId: string | null) {
+  return useQuery({
+    queryKey: txKey(kind, groupId),
+    queryFn: (): Promise<Transaction[]> => listApi(kind).getForGroup(groupId as string),
+    enabled: !!groupId,
   });
 }
 
@@ -59,14 +78,14 @@ export function useCurrency(): Currency {
   return useSettings().data?.currency ?? "MAD";
 }
 
-// ── Mutations ────────────────────────────────────────────────────────────────
-export function useAddTransaction(kind: TxKind) {
+// ── Transaction mutations (scoped by groupId) ─────────────────────────────────
+export function useAddTransaction(kind: TxKind, groupId: string | null = null) {
   const qc = useQueryClient();
-  const key = keyFor(kind);
+  const key = txKey(kind, groupId);
 
   return useMutation({
     mutationFn: (values: FormValues): Promise<Transaction> =>
-      listApi(kind).create(toPayload(values)),
+      listApi(kind).create(toPayload(values, groupId)),
     onMutate: async (values) => {
       await qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<Transaction[]>(key) ?? [];
@@ -75,7 +94,7 @@ export function useAddTransaction(kind: TxKind) {
         id: tempId,
         user_id: "",
         created_at: new Date().toISOString(),
-        ...toPayload(values),
+        ...toPayload(values, groupId),
       };
       qc.setQueryData<Transaction[]>(key, [optimistic, ...prev]);
       return { prev, tempId };
@@ -88,23 +107,27 @@ export function useAddTransaction(kind: TxKind) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(key, ctx.prev);
     },
-    onSettled: invalidateGroupLedger(qc),
   });
 }
 
-export function useUpdateTransaction(kind: TxKind) {
+export function useUpdateTransaction(kind: TxKind, groupId: string | null = null) {
   const qc = useQueryClient();
-  const key = keyFor(kind);
+  const key = txKey(kind, groupId);
 
   return useMutation({
     mutationFn: ({ id, values }: { id: number; values: FormValues }): Promise<Transaction> =>
-      listApi(kind).update(id, toPayload(values)),
+      listApi(kind).update(id, {
+        category: values.category,
+        name: values.name,
+        amount: Number(values.amount),
+        date: values.date,
+      }),
     onMutate: async ({ id, values }) => {
       await qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<Transaction[]>(key) ?? [];
       qc.setQueryData<Transaction[]>(
         key,
-        prev.map((t) => (t.id === id ? { ...t, ...toPayload(values) } : t))
+        prev.map((t) => (t.id === id ? { ...t, ...toPayload(values, t.group_id) } : t))
       );
       return { prev };
     },
@@ -116,13 +139,12 @@ export function useUpdateTransaction(kind: TxKind) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(key, ctx.prev);
     },
-    onSettled: invalidateGroupLedger(qc),
   });
 }
 
-export function useDeleteTransaction(kind: TxKind) {
+export function useDeleteTransaction(kind: TxKind, groupId: string | null = null) {
   const qc = useQueryClient();
-  const key = keyFor(kind);
+  const key = txKey(kind, groupId);
 
   return useMutation({
     mutationFn: (id: number): Promise<void> => listApi(kind).delete(id),
@@ -135,13 +157,12 @@ export function useDeleteTransaction(kind: TxKind) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(key, ctx.prev);
     },
-    onSettled: invalidateGroupLedger(qc),
   });
 }
 
-export function useRenameCategory(kind: TxKind) {
+export function useRenameCategory(kind: TxKind, groupId: string | null = null) {
   const qc = useQueryClient();
-  const key = keyFor(kind);
+  const key = txKey(kind, groupId);
   const api = listApi(kind);
 
   return useMutation({
@@ -172,10 +193,62 @@ export function useRenameCategory(kind: TxKind) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(key, ctx.prev);
     },
-    onSettled: invalidateGroupLedger(qc),
   });
 }
 
+// ── Templates ─────────────────────────────────────────────────────────────────
+export function useTemplates(kind: TxKind, groupId: string | null = null) {
+  return useQuery({
+    queryKey: templatesKey(kind, groupId),
+    queryFn: (): Promise<BudgetTemplate[]> => templatesApi.list(kind, groupId),
+  });
+}
+
+export function useCreateTemplate(kind: TxKind, groupId: string | null = null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string; items: TemplateItem[] }) =>
+      templatesApi.create({ kind, groupId, name: input.name, items: input.items }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: templatesKey(kind, groupId) }),
+  });
+}
+
+export function useDeleteTemplate(kind: TxKind, groupId: string | null = null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => templatesApi.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: templatesKey(kind, groupId) }),
+  });
+}
+
+/**
+ * Apply a template to a month: inserts every line item as a transaction dated to
+ * the first of that month, in one round-trip. Refreshes the scoped ledger.
+ */
+export function useApplyTemplate(kind: TxKind, groupId: string | null = null) {
+  const qc = useQueryClient();
+  const key = txKey(kind, groupId);
+
+  return useMutation({
+    mutationFn: ({ template, month }: { template: BudgetTemplate; month: string }) => {
+      const date = `${month}-01`;
+      const rows = template.items.map((it) => ({
+        category: it.category,
+        name: it.name,
+        amount: Number(it.amount),
+        date,
+        group_id: groupId ?? null,
+      }));
+      return listApi(kind).createMany(rows);
+    },
+    onSuccess: (created) => {
+      qc.setQueryData<Transaction[]>(key, (old = []) => [...created, ...old]);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
 export function useSetCurrency() {
   const qc = useQueryClient();
 

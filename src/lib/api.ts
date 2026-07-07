@@ -1,6 +1,9 @@
 // src/lib/api.ts
 import { supabase } from './supabase'
-import type { Expense, Income, UserSettings } from '@/types'
+import type { BudgetTemplate, Expense, Income, TemplateItem, Transaction, UserSettings } from '@/types'
+
+// Payload for creating a transaction (personal when group_id is omitted/null).
+export type NewTransaction = Omit<Transaction, 'id' | 'created_at' | 'user_id'>
 
 // Auth helper to ensure we have a valid session.
 //
@@ -49,14 +52,16 @@ async function withAuth<T>(operation: (userId: string) => Promise<T>): Promise<T
 
 // Expenses API
 export const expensesApi = {
+  // Personal expenses only (group_id IS NULL). Family rows are read via getForGroup.
   async getAll(): Promise<Expense[]> {
     return withAuth(async (userId) => {
       const { data, error } = await supabase
         .from('expenses')
         .select('*')
-        .eq('user_id', userId) // Add this for security
+        .eq('user_id', userId)
+        .is('group_id', null)
         .order('created_at', { ascending: false })
-      
+
       if (error) {
         console.error('Expenses fetch error:', error)
         throw new Error(`Failed to fetch expenses: ${error.message}`)
@@ -65,19 +70,45 @@ export const expensesApi = {
     })
   },
 
-  async create(expense: Omit<Expense, 'id' | 'created_at' | 'user_id'>): Promise<Expense> {
+  // Shared expenses for a group (RLS grants reads to members).
+  async getForGroup(groupId: string): Promise<Expense[]> {
+    return withAuth(async () => {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('date', { ascending: false })
+
+      if (error) throw new Error(`Failed to fetch group expenses: ${error.message}`)
+      return data || []
+    })
+  },
+
+  async create(expense: NewTransaction): Promise<Expense> {
     return withAuth(async (userId) => {
       const { data, error } = await supabase
         .from('expenses')
         .insert([{ ...expense, user_id: userId }])
         .select()
         .single()
-      
+
       if (error) {
         console.error('Expense creation error:', error)
         throw new Error(`Failed to create expense: ${error.message}`)
       }
       return data
+    })
+  },
+
+  async createMany(rows: NewTransaction[]): Promise<Expense[]> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert(rows.map((r) => ({ ...r, user_id: userId })))
+        .select()
+
+      if (error) throw new Error(`Failed to add expenses: ${error.message}`)
+      return data || []
     })
   },
 
@@ -117,14 +148,16 @@ export const expensesApi = {
 
 // Income API
 export const incomeApi = {
+  // Personal income only (group_id IS NULL).
   async getAll(): Promise<Income[]> {
     return withAuth(async (userId) => {
       const { data, error } = await supabase
         .from('income')
         .select('*')
-        .eq('user_id', userId) // Add this for security
+        .eq('user_id', userId)
+        .is('group_id', null)
         .order('created_at', { ascending: false })
-      
+
       if (error) {
         console.error('Income fetch error:', error)
         throw new Error(`Failed to fetch income: ${error.message}`)
@@ -133,19 +166,45 @@ export const incomeApi = {
     })
   },
 
-  async create(income: Omit<Income, 'id' | 'created_at' | 'user_id'>): Promise<Income> {
+  // Shared income for a group (RLS grants reads to members).
+  async getForGroup(groupId: string): Promise<Income[]> {
+    return withAuth(async () => {
+      const { data, error } = await supabase
+        .from('income')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('date', { ascending: false })
+
+      if (error) throw new Error(`Failed to fetch group income: ${error.message}`)
+      return data || []
+    })
+  },
+
+  async create(income: NewTransaction): Promise<Income> {
     return withAuth(async (userId) => {
       const { data, error } = await supabase
         .from('income')
         .insert([{ ...income, user_id: userId }])
         .select()
         .single()
-      
+
       if (error) {
         console.error('Income creation error:', error)
         throw new Error(`Failed to create income: ${error.message}`)
       }
       return data
+    })
+  },
+
+  async createMany(rows: NewTransaction[]): Promise<Income[]> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('income')
+        .insert(rows.map((r) => ({ ...r, user_id: userId })))
+        .select()
+
+      if (error) throw new Error(`Failed to add income: ${error.message}`)
+      return data || []
     })
   },
 
@@ -223,6 +282,59 @@ export const userSettingsApi = {
       return data
     })
   }
+}
+
+// Budget / category templates API
+export const templatesApi = {
+  // Personal scope → the user's own personal templates.
+  // Group scope    → the group's shared templates (any member's).
+  async list(kind: 'expense' | 'income', groupId: string | null): Promise<BudgetTemplate[]> {
+    return withAuth(async (userId) => {
+      let q = supabase
+        .from('budget_templates')
+        .select('*')
+        .eq('kind', kind)
+        .order('created_at', { ascending: true })
+
+      q = groupId
+        ? q.eq('group_id', groupId)
+        : q.is('group_id', null).eq('user_id', userId)
+
+      const { data, error } = await q
+      if (error) throw new Error(`Failed to load templates: ${error.message}`)
+      return (data ?? []) as BudgetTemplate[]
+    })
+  },
+
+  async create(input: {
+    kind: 'expense' | 'income'
+    name: string
+    items: TemplateItem[]
+    groupId: string | null
+  }): Promise<BudgetTemplate> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('budget_templates')
+        .insert({
+          user_id: userId,
+          group_id: input.groupId,
+          kind: input.kind,
+          name: input.name,
+          items: input.items,
+        })
+        .select()
+        .single()
+      if (error) throw new Error(`Failed to save template: ${error.message}`)
+      return data as BudgetTemplate
+    })
+  },
+
+  async remove(id: string): Promise<void> {
+    return withAuth(async () => {
+      const { error } = await supabase.from('budget_templates').delete().eq('id', id)
+      if (error) throw new Error(`Failed to delete template: ${error.message}`)
+    })
+  },
 }
 
 // Utility function to check auth status without throwing

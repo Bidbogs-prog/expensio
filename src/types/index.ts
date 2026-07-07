@@ -5,17 +5,38 @@ export type Currency = "USD" | "MAD" | "EUR";
 
 // ── Database models ───────────────────────────────────────────────────────────
 export interface Transaction {
-  id: number 
+  id: number
   user_id: string;
   category: string;
   name: string;
   amount: number;
   created_at?: string;
-  date: string
+  date: string;
+  /** null/undefined = personal; a group id = shared family transaction. */
+  group_id?: string | null;
 }
 
 export interface Expense extends Transaction {}
 export interface Income extends Transaction {}
+
+// ── Budget / category templates ───────────────────────────────────────────────
+/** One fixed line item inside a template. */
+export interface TemplateItem {
+  category: string;
+  name: string;
+  amount: number;
+}
+
+export interface BudgetTemplate {
+  id: string;
+  user_id: string;
+  /** null = personal template; a group id = shared family template. */
+  group_id: string | null;
+  kind: "expense" | "income";
+  name: string;
+  items: TemplateItem[];
+  created_at?: string;
+}
 
 export interface UserSettings {
   id?: number;
