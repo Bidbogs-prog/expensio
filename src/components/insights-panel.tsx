@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Info,
   Lightbulb,
-  Lock,
   OctagonAlert,
   Sparkles,
 } from "lucide-react";
@@ -16,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { useTransactions, useCurrency } from "@/lib/queries";
 import { useCurrentMonth } from "@/hooks/use-derived";
 import { generateInsights, type Insight, type InsightTone } from "@/lib/insights";
-import { usePlan, FREE_LIMITS } from "@/lib/plan";
 import { cn } from "@/lib/utils";
 
 const TONE: Record<
@@ -94,7 +92,6 @@ export function InsightsPanel({
   variant?: "full" | "compact";
   className?: string;
 }) {
-  const { isPro, openUpgrade } = usePlan();
   const { data: expenses } = useTransactions("expense");
   const { data: income } = useTransactions("income");
   const currency = useCurrency();
@@ -105,10 +102,7 @@ export function InsightsPanel({
     [expenses, income, currentMonth, currency]
   );
 
-  const cap = variant === "compact" ? 3 : insights.length;
-  const visibleCount = isPro ? cap : Math.min(FREE_LIMITS.insights, cap);
-  const shown = insights.slice(0, visibleCount);
-  const hiddenCount = insights.length - visibleCount;
+  const shown = variant === "compact" ? insights.slice(0, 3) : insights;
 
   return (
     <Card className={cn("relative overflow-hidden p-5 shadow-soft", className)}>
@@ -148,29 +142,10 @@ export function InsightsPanel({
           <InsightRow key={insight.id} insight={insight} index={i} />
         ))}
 
-        {/* Freemium wall */}
-        {!isPro && hiddenCount > 0 && (
-          <button
-            onClick={() => openUpgrade("AI recommendations")}
-            className="group relative block w-full overflow-hidden rounded-xl border border-dashed border-primary/30 bg-secondary/20 p-4 text-left transition-smooth hover:border-primary/50"
-          >
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary ring-1 ring-primary/20">
-                <Lock className="h-[1.05rem] w-[1.05rem]" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">
-                  {hiddenCount} more insight{hiddenCount > 1 ? "s" : ""} found
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Unlock unlimited AI recommendations & warnings with Pro.
-                </p>
-              </div>
-              <span className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-transform group-hover:scale-105">
-                Go Pro
-              </span>
-            </div>
-          </button>
+        {shown.length === 0 && (
+          <p className="rounded-xl border border-dashed border-border/60 bg-secondary/20 px-4 py-6 text-center text-sm text-muted-foreground">
+            Add a few transactions and Expensio AI will start surfacing insights.
+          </p>
         )}
       </div>
     </Card>

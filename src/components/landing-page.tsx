@@ -9,13 +9,25 @@ import {
   ShieldCheck,
   Sparkles,
   TrendingUp,
-  Wallet,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandMark, BrandLockup } from "@/components/brand-mark";
-import { TIERS } from "@/lib/pricing";
+import { AnimatedShinyText } from "@/components/magicui/animated-shiny-text";
+import { BorderBeam } from "@/components/magicui/border-beam";
+import { NumberTicker } from "@/components/magicui/number-ticker";
 import { cn } from "@/lib/utils";
+
+const ALL_FEATURES = [
+  "Unlimited expenses & income",
+  "Categorical tracking & breakdowns",
+  "Unlimited AI recommendations & warnings",
+  "Spending trend & 6-month forecasts",
+  "Burn-rate & overspend projections",
+  "Unlimited history, all months",
+  "Family shared household groups",
+  "Multi-currency support",
+];
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -96,11 +108,11 @@ export function LandingPage({ onSignInGoogle, onDemo, error }: LandingPageProps)
         <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
             <div
-              className="reveal inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary"
+              className="reveal inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-medium"
               style={{ "--d": "0ms" } as React.CSSProperties}
             >
-              <Sparkles className="h-3.5 w-3.5" />
-              AI-powered expense intelligence
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <AnimatedShinyText>AI-powered expense intelligence</AnimatedShinyText>
             </div>
 
             <h1
@@ -273,49 +285,52 @@ export function LandingPage({ onSignInGoogle, onDemo, error }: LandingPageProps)
       <section id="pricing" className="mx-auto w-full max-w-5xl px-5 py-24">
         <SectionHeading
           eyebrow="Simple pricing"
-          title="Start free. Upgrade when it pays for itself."
-          subtitle="Pro costs less than one impulse coffee run a month — and usually saves you many."
+          title="Everything. Free, forever."
+          subtitle="No tiers, no paywalls, no card. Every feature — AI insights, forecasts, family groups — unlocked for everyone."
         />
-        <div className="mt-12 grid items-start gap-5 md:grid-cols-2">
-          {TIERS.map((tier) => (
-            <div
-              key={tier.id}
-              className={cn(
-                "relative rounded-2xl border p-6",
-                tier.highlight
-                  ? "border-primary/40 bg-card glow-primary"
-                  : "border-border bg-card/60"
-              )}
-            >
-              {tier.highlight && (
-                <span className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
-                  Most popular
-                </span>
-              )}
-              <h3 className="font-display text-lg font-bold tracking-tight">{tier.name}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{tier.tagline}</p>
-              <div className="mt-5 flex items-baseline gap-1">
-                <span className="font-display text-4xl font-extrabold tabular tracking-tight">${tier.price}</span>
-                <span className="text-sm text-muted-foreground">{tier.cadence}</span>
-              </div>
-              <Button
-                onClick={onSignInGoogle}
-                variant={tier.highlight ? "default" : "outline"}
-                className={cn("mt-5 w-full font-semibold", tier.highlight && "glow-primary")}
-              >
-                {tier.id === "pro" ? <Zap className="h-4 w-4" /> : <Wallet className="h-4 w-4" />}
-                {tier.id === "pro" ? "Start free trial" : "Get started free"}
-              </Button>
-              <ul className="mt-6 space-y-3">
-                {tier.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-sm">
-                    <Check className={cn("mt-0.5 h-4 w-4 shrink-0", tier.highlight ? "text-primary" : "text-muted-foreground")} />
-                    <span className="text-foreground/90">{f}</span>
-                  </li>
-                ))}
-              </ul>
+        <div className="mt-12 flex justify-center">
+          <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-primary/40 bg-card p-8 shadow-medium glow-primary">
+            <BorderBeam duration={8} />
+            <div className="aurora-blob -right-10 -top-16 h-40 w-40 bg-primary/20 animate-aurora" />
+
+            <div className="relative flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                Full access
+              </span>
+              <span className="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
+                $0 / forever
+              </span>
             </div>
-          ))}
+
+            <div className="relative mt-6 flex items-baseline gap-1.5">
+              <span className="font-display text-6xl font-extrabold tabular tracking-tight">$0</span>
+              <span className="text-base text-muted-foreground">/ month</span>
+            </div>
+            <p className="relative mt-2 text-sm text-muted-foreground">
+              The complete financial co-pilot — nothing held back.
+            </p>
+
+            <Button
+              onClick={onSignInGoogle}
+              size="lg"
+              className="relative mt-6 h-12 w-full text-sm font-semibold glow-primary"
+            >
+              <GoogleIcon className="h-5 w-5" />
+              Start free with Google
+            </Button>
+
+            <ul className="relative mt-7 grid gap-3">
+              {ALL_FEATURES.map((f) => (
+                <li key={f} className="flex items-start gap-2.5 text-sm">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                    <Check className="h-3 w-3" />
+                  </span>
+                  <span className="text-foreground/90">{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
 
@@ -383,13 +398,14 @@ function HeroMock() {
       style={{ "--d": "300ms" } as React.CSSProperties}
     >
       <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-primary/10 blur-3xl" />
-      <div className="rounded-2xl border border-border bg-card/80 p-5 shadow-medium backdrop-blur-xl">
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-card/80 p-5 shadow-medium backdrop-blur-xl">
+        <BorderBeam duration={9} />
         {/* balance header */}
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Balance · June</p>
             <p className="mt-1.5 font-display text-3xl font-extrabold tabular tracking-tight">
-              12,480 <span className="text-base font-semibold text-muted-foreground">MAD</span>
+              <NumberTicker value={12480} /> <span className="text-base font-semibold text-muted-foreground">MAD</span>
             </p>
           </div>
           <span className="flex items-center gap-1 rounded-full bg-emerald-500/12 px-2 py-1 text-xs font-medium text-emerald-400 ring-1 ring-emerald-500/20">
@@ -401,11 +417,15 @@ function HeroMock() {
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-border/60 bg-secondary/30 p-3">
             <p className="text-xs text-muted-foreground">Income</p>
-            <p className="mt-1 font-mono text-lg font-semibold tabular text-emerald-400">18,200</p>
+            <p className="mt-1 font-mono text-lg font-semibold tabular text-emerald-400">
+              <NumberTicker value={18200} />
+            </p>
           </div>
           <div className="rounded-xl border border-border/60 bg-secondary/30 p-3">
             <p className="text-xs text-muted-foreground">Expenses</p>
-            <p className="mt-1 font-mono text-lg font-semibold tabular text-rose-400">5,720</p>
+            <p className="mt-1 font-mono text-lg font-semibold tabular text-rose-400">
+              <NumberTicker value={5720} />
+            </p>
           </div>
         </div>
 

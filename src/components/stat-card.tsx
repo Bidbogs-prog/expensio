@@ -3,6 +3,8 @@
 import type { LucideIcon } from "lucide-react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { NumberTicker } from "@/components/magicui/number-ticker";
+import { BorderBeam } from "@/components/magicui/border-beam";
 import { cn } from "@/lib/utils";
 
 type Tone = "accent" | "positive" | "negative" | "neutral";
@@ -29,13 +31,16 @@ const TONE: Record<Tone, { chip: string; value: string; glow?: string }> = {
 
 interface StatCardProps {
   label: string;
-  value: string;
+  /** A number renders with a count-up animation; a string renders as-is (e.g. "—"). */
+  value: number | string;
   unit?: string;
   icon: LucideIcon;
   tone?: Tone;
   delta?: { label: string; positive: boolean } | null;
   hint?: React.ReactNode;
   featured?: boolean;
+  /** Render an animated border beam (reserve for the single focal card). */
+  beam?: boolean;
 }
 
 export function StatCard({
@@ -47,6 +52,7 @@ export function StatCard({
   delta,
   hint,
   featured,
+  beam,
 }: StatCardProps) {
   const t = TONE[tone];
   return (
@@ -57,6 +63,7 @@ export function StatCard({
         featured && t.glow
       )}
     >
+      {beam && <BorderBeam duration={8} />}
       <div className="relative flex items-start justify-between">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {label}
@@ -67,7 +74,7 @@ export function StatCard({
       </div>
 
       <p className={cn("relative mt-4 font-display text-3xl font-extrabold tracking-tight tabular sm:text-[2rem]", t.value)}>
-        {value}
+        {typeof value === "number" ? <NumberTicker value={value} /> : value}
         {unit && <span className="ml-1.5 text-base font-semibold text-muted-foreground">{unit}</span>}
       </p>
 

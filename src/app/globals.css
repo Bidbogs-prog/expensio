@@ -278,7 +278,9 @@
 
   @media (prefers-reduced-motion: reduce) {
     .reveal { opacity: 1; animation: none; }
-    .animate-aurora, .animate-float, .animate-marquee, .animate-pulse-glow { animation: none !important; }
+    .animate-aurora, .animate-float, .animate-marquee, .animate-pulse-glow,
+    [data-beam], [data-shiny] { animation: none !important; }
+    [data-shiny] { color: hsl(var(--primary)); -webkit-text-fill-color: currentColor; }
   }
 }
 
@@ -286,5 +288,29 @@
 @keyframes fade-up {
   0% { opacity: 0; transform: translateY(16px); }
   100% { opacity: 1; transform: translateY(0); }
+}
+
+/*
+  ─────────────────────────────────────────────────────────────────────────────
+  Magic-UI-style primitives (self-contained — no runtime deps)
+  ─────────────────────────────────────────────────────────────────────────────
+*/
+
+/* Animatable angle for the rotating border beam. Where @property is unsupported,
+   the beam simply renders as a static glow arc (graceful degradation). */
+@property --beam-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes beam-rotate {
+  to { --beam-angle: 360deg; }
+}
+
+/* A light sweeping across text (AnimatedShinyText). */
+@keyframes shiny-sweep {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 

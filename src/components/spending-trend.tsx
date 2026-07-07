@@ -2,12 +2,11 @@
 
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
-import { Lock, TrendingUp } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useTransactions, useCurrency } from "@/lib/queries";
 import { useCurrentMonth } from "@/hooks/use-derived";
 import { computeTrend } from "@/lib/insights";
-import { usePlan } from "@/lib/plan";
 
 // Code-split recharts out of the initial bundle.
 const TrendGraph = dynamic(
@@ -19,7 +18,6 @@ const TrendGraph = dynamic(
 );
 
 export function SpendingTrend() {
-  const { isPro, openUpgrade } = usePlan();
   const { data: expenses } = useTransactions("expense");
   const { data: income } = useTransactions("income");
   const currency = useCurrency();
@@ -44,37 +42,10 @@ export function SpendingTrend() {
             <p className="mt-1 text-xs text-muted-foreground">Last 6 months</p>
           </div>
         </div>
-        {!isPro && (
-          <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">
-            Pro
-          </span>
-        )}
       </div>
 
       <div className="relative h-[260px] w-full">
-        <div className={!isPro ? "pointer-events-none select-none blur-[6px] saturate-50" : undefined}>
-          <TrendGraph data={data} currency={currency} />
-        </div>
-
-        {!isPro && (
-          <button
-            onClick={() => openUpgrade("trend analytics")}
-            className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-lg"
-          >
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 text-primary ring-1 ring-primary/25">
-              <Lock className="h-5 w-5" />
-            </span>
-            <div className="text-center">
-              <p className="text-sm font-semibold">Trend analytics is a Pro feature</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                See 6-month cash-flow & forecasts.
-              </p>
-            </div>
-            <span className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground glow-primary">
-              Unlock with Pro
-            </span>
-          </button>
-        )}
+        <TrendGraph data={data} currency={currency} />
       </div>
     </Card>
   );

@@ -20,7 +20,6 @@ import {
   TrendingDown,
   Users,
   Wallet,
-  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -32,7 +31,6 @@ import { supabase } from "@/lib/supabase";
 import { useState } from "react";
 import { useAuthUser } from "@/lib/auth-context";
 import { useIncomingInvites } from "@/lib/group-queries";
-import { usePlan } from "@/lib/plan";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -45,7 +43,6 @@ const NAV_ITEMS = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { isPro, openUpgrade } = usePlan();
   const user = useAuthUser();
   const { data: invites } = useIncomingInvites();
   const inviteCount = invites?.length ?? 0;
@@ -78,7 +75,7 @@ export function AppSidebar() {
               Expens<span className="text-primary">io</span>
             </h2>
             <p className="truncate text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-              {isPro ? "Pro" : "Money clarity"}
+              Money clarity
             </p>
           </div>
         </Link>
@@ -136,22 +133,6 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="gap-3 p-3">
-        {!isPro && (
-          <button
-            onClick={() => openUpgrade()}
-            className="group relative overflow-hidden rounded-xl border border-primary/25 bg-gradient-to-br from-primary/15 to-primary/5 p-3 text-left transition-smooth hover:border-primary/40"
-          >
-            <div className="aurora-blob -right-6 -top-8 h-20 w-20 bg-primary/30 animate-aurora" />
-            <div className="relative flex items-center gap-2 text-sm font-semibold">
-              <Zap className="h-4 w-4 text-primary" />
-              Go Pro
-            </div>
-            <p className="relative mt-1 text-xs text-muted-foreground">
-              Unlimited AI insights, forecasts & analytics.
-            </p>
-          </button>
-        )}
-
         <div className="flex items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-2">
           {hasAvatar ? (
             <Image

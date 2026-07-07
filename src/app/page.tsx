@@ -16,7 +16,6 @@ export default function Home() {
   const currentMonth = useCurrentMonth();
   const a = useAnalytics();
 
-  const fmt = (n: number) => Math.round(n).toLocaleString();
   const savingsPct = Math.round(a.savingsRate * 100);
   const expensePct = Math.round(a.expenseDelta * 100);
 
@@ -38,11 +37,12 @@ export default function Home() {
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <StatCard
             label="Balance"
-            value={fmt(a.balance)}
+            value={Math.round(a.balance)}
             unit={currency}
             icon={Wallet}
             tone={a.balance < 0 ? "negative" : "positive"}
             featured
+            beam
             hint={
               a.balance < 0 ? (
                 <span className="text-xs font-medium text-rose-400">Over budget</span>
@@ -53,7 +53,7 @@ export default function Home() {
           />
           <StatCard
             label="Income"
-            value={fmt(a.incomeTotal)}
+            value={Math.round(a.incomeTotal)}
             unit={currency}
             icon={TrendingUp}
             tone="positive"
@@ -61,7 +61,7 @@ export default function Home() {
           />
           <StatCard
             label="Expenses"
-            value={fmt(a.expenseTotal)}
+            value={Math.round(a.expenseTotal)}
             unit={currency}
             icon={TrendingDown}
             tone="negative"
@@ -73,7 +73,7 @@ export default function Home() {
           />
           <StatCard
             label="Savings rate"
-            value={a.incomeTotal > 0 ? `${savingsPct}` : "—"}
+            value={a.incomeTotal > 0 ? savingsPct : "—"}
             unit={a.incomeTotal > 0 ? "%" : undefined}
             icon={PiggyBank}
             tone="accent"
