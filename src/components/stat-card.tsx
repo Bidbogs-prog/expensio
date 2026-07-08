@@ -9,23 +9,27 @@ import { cn } from "@/lib/utils";
 
 type Tone = "accent" | "positive" | "negative" | "neutral";
 
-const TONE: Record<Tone, { chip: string; value: string; glow?: string }> = {
+const TONE: Record<Tone, { chip: string; value: string; glow?: string; beam: string }> = {
   accent: {
     chip: "bg-primary/15 text-primary ring-primary/20",
     value: "text-foreground",
     glow: "before:bg-primary/10",
+    beam: "hsl(var(--primary))",
   },
   positive: {
     chip: "bg-emerald-500/12 text-emerald-400 ring-emerald-500/20",
     value: "text-emerald-400",
+    beam: "#34d399", // emerald-400
   },
   negative: {
     chip: "bg-rose-500/12 text-rose-400 ring-rose-500/20",
     value: "text-rose-400",
+    beam: "#fb7185", // rose-400
   },
   neutral: {
     chip: "bg-secondary text-muted-foreground ring-border",
     value: "text-foreground",
+    beam: "hsl(var(--primary))",
   },
 };
 
@@ -63,7 +67,7 @@ export function StatCard({
         featured && t.glow
       )}
     >
-      {beam && <BorderBeam duration={8} />}
+      {beam && <BorderBeam duration={8} color={t.beam} />}
       <div className="relative flex items-start justify-between">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {label}
