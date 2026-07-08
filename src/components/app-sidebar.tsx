@@ -18,7 +18,6 @@ import {
   LogOut,
   Sparkles,
   TrendingDown,
-  Users,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
@@ -30,7 +29,6 @@ import { BrandMark } from "@/components/brand-mark";
 import { supabase } from "@/lib/supabase";
 import { useState } from "react";
 import { useAuthUser } from "@/lib/auth-context";
-import { useIncomingInvites } from "@/lib/group-queries";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -38,14 +36,11 @@ const NAV_ITEMS = [
   { title: "Insights", url: "/insights", icon: Sparkles, badge: "AI" },
   { title: "Expenses", url: "/expenses", icon: TrendingDown },
   { title: "Income", url: "/income", icon: Wallet },
-  { title: "Family", url: "/family", icon: Users },
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
   const user = useAuthUser();
-  const { data: invites } = useIncomingInvites();
-  const inviteCount = invites?.length ?? 0;
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const signOut = async () => {
@@ -90,8 +85,6 @@ export function AppSidebar() {
             <SidebarMenu className="gap-1">
               {NAV_ITEMS.map((item) => {
                 const isActive = pathname === item.url;
-                const countBadge =
-                  item.url === "/family" && inviteCount > 0 ? inviteCount : null;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
@@ -113,11 +106,7 @@ export function AppSidebar() {
                         <span className={isActive ? "font-medium" : undefined}>
                           {item.title}
                         </span>
-                        {countBadge !== null ? (
-                          <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                            {countBadge}
-                          </span>
-                        ) : item.badge ? (
+                        {item.badge ? (
                           <span className="ml-auto rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-primary">
                             {item.badge}
                           </span>

@@ -1,27 +1,37 @@
 "use client";
 
-import { PiggyBank, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import { useCurrency } from "@/lib/queries";
-import { useAnalytics, useCurrentMonth } from "@/hooks/use-derived";
+import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { CurrencySelect } from "@/components/currency-select";
 import { MonthNavigator } from "@/components/monthNavigator";
-import { StatCard } from "@/components/stat-card";
-import { CategoryPieChart } from "@/components/category-pie-chart";
-import { InsightsPanel } from "@/components/insights-panel";
-import { SpendingTrend } from "@/components/spending-trend";
+import { ScopeSwitcher } from "@/components/scope-switcher";
+import { Button } from "@/components/ui/button";
+import { PersonalOverview } from "@/components/personal-overview";
+import { FamilyOverview } from "@/components/family-overview";
+import { IncomingInvites } from "@/components/family/incoming-invites";
+import { CreateGroupDialog } from "@/components/family/create-group-dialog";
+import { useGroups } from "@/lib/group-queries";
 
 export default function Home() {
-  const currency = useCurrency();
-  const currentMonth = useCurrentMonth();
-  const a = useAnalytics();
+  const { data: groups = [] } = useGroups();
+  const [scope, setScope] = useState<string | null>(null); // null = personal
+  const [showCreate, setShowCreate] = useState(false);
 
-  const savingsPct = Math.round(a.savingsRate * 100);
-  const expensePct = Math.round(a.expenseDelta * 100);
+  // Keep the scope valid if the user's groups change (e.g. leaves a group).
+  useEffect(() => {
+    if (scope && !groups.some((g) => g.id === scope)) setScope(null);
+  }, [groups, scope]);
+
+  const isPersonal = scope === null;
 
   return (
     <div className="min-h-screen">
-      <PageHeader eyebrow="Overview" title="Dashboard" subtitle="Your money, this month">
+      <PageHeader
+        eyebrow={isPersonal ? "Overview" : "Shared"}
+        title="Dashboard"
+        subtitle={isPersonal ? "Your money, this month" : "Your household, combined"}
+      >
         <div className="hidden sm:block">
           <MonthNavigator />
         </div>
@@ -33,74 +43,34 @@ export default function Home() {
           <MonthNavigator />
         </div>
 
-        {/* Stat row */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          <StatCard
-            label="Balance"
-            value={Math.round(a.balance)}
-            unit={currency}
-            icon={Wallet}
-            tone={a.balance < 0 ? "negative" : "positive"}
-            featured
-            beam
-            hint={
-              a.balance < 0 ? (
-                <span className="text-xs font-medium text-rose-400">Over budget</span>
-              ) : (
-                <span className="text-xs text-muted-foreground">Income − expenses</span>
-              )
-            }
-          />
-          <StatCard
-            label="Income"
-            value={Math.round(a.incomeTotal)}
-            unit={currency}
-            icon={TrendingUp}
-            tone="positive"
-            hint={<span className="text-xs text-muted-foreground">{currentMonth.replace("-", " · ")}</span>}
-          />
-          <StatCard
-            label="Expenses"
-            value={Math.round(a.expenseTotal)}
-            unit={currency}
-            icon={TrendingDown}
-            tone="negative"
-            delta={
-              a.prevExpenseTotal > 0
-                ? { label: `${Math.abs(expensePct)}%`, positive: a.expenseDelta <= 0 }
-                : null
-            }
-          />
-          <StatCard
-            label="Savings rate"
-            value={a.incomeTotal > 0 ? savingsPct : "—"}
-            unit={a.incomeTotal > 0 ? "%" : undefined}
-            icon={PiggyBank}
-            tone="accent"
-            featured
-            hint={
-              <span className="text-xs text-muted-foreground">
-                {savingsPct >= 20 ? "On target" : a.incomeTotal > 0 ? "Aim for 20%" : "Add income"}
-              </span>
-            }
-          />
+        <IncomingInvites />
+
+        {/* Personal | Family scope toggle — same control as the Expenses/Income tabs. */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <ScopeSwitcher groups={groups} value={scope} onChange={setScope} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCreate(true)}
+            className="rounded-full"
+          >
+            <Plus className="h-4 w-4" />
+            New group
+          </Button>
         </div>
 
-        {/* AI + analytics */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <InsightsPanel variant="compact" />
-          <SpendingTrend />
-        </div>
-
-        {/* Breakdown */}
-        <div>
-          <h2 className="mb-3 font-display text-lg font-bold tracking-tight">Breakdown</h2>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <CategoryPieChart kind="expense" />
-            <CategoryPieChart kind="income" />
-          </div>
-        </div>
+        {isPersonal ? (
+          <PersonalOverview />
+        ) : (
+          <FamilyOverview groupId={scope} onLeft={() => setScope(null)} />
+        )}
       </div>
+
+      <CreateGroupDialog
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={(id) => setScope(id)}
+      />
     </div>
   );
 }

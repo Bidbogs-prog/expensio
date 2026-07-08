@@ -53,7 +53,7 @@ export function TransactionWorkspace({ kind }: { kind: TxKind }) {
       ) : (
         <p className="text-xs text-muted-foreground">
           Want a shared household budget?{" "}
-          <Link href="/family" className="inline-flex items-center gap-1 text-primary hover:underline">
+          <Link href="/" className="inline-flex items-center gap-1 text-primary hover:underline">
             <Users className="h-3.5 w-3.5" />
             Create a family group
           </Link>
