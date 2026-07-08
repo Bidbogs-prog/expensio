@@ -9,40 +9,9 @@ import { useMemo } from "react";
 import { useTransactions } from "@/lib/queries";
 import { useUiStore } from "@/hooks/use-ui-store";
 import { computeAnalytics } from "@/lib/insights";
-import type { TxKind } from "@/lib/transaction-ui";
 
 export function useCurrentMonth() {
   return useUiStore((s) => s.currentMonth);
-}
-
-/** Transactions of one kind, filtered to the selected month. */
-export function useMonthTransactions(kind: TxKind) {
-  const month = useUiStore((s) => s.currentMonth);
-  const { data } = useTransactions(kind);
-  return useMemo(
-    () => (data ?? []).filter((t) => t.date?.startsWith(month)),
-    [data, month]
-  );
-}
-
-/** Month totals + solvency, derived once. */
-export function useMonthTotals() {
-  const month = useUiStore((s) => s.currentMonth);
-  const { data: expenses } = useTransactions("expense");
-  const { data: income } = useTransactions("income");
-
-  return useMemo(() => {
-    let expenseTotal = 0;
-    let incomeTotal = 0;
-    for (const e of expenses ?? []) if (e.date?.startsWith(month)) expenseTotal += Number(e.amount);
-    for (const i of income ?? []) if (i.date?.startsWith(month)) incomeTotal += Number(i.amount);
-    return {
-      expenseTotal,
-      incomeTotal,
-      balance: incomeTotal - expenseTotal,
-      isBroke: incomeTotal < expenseTotal,
-    };
-  }, [expenses, income, month]);
 }
 
 /** Full AI analytics for the selected month, derived once. */

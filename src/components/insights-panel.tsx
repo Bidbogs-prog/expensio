@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useTransactions, useCurrency } from "@/lib/queries";
+import { useScopedTransactions, useCurrency } from "@/lib/queries";
 import { useCurrentMonth } from "@/hooks/use-derived";
 import { generateInsights, type Insight, type InsightTone } from "@/lib/insights";
 import { cn } from "@/lib/utils";
@@ -88,12 +88,14 @@ function InsightRow({ insight, index }: { insight: Insight; index: number }) {
 export function InsightsPanel({
   variant = "full",
   className,
+  groupId = null,
 }: {
   variant?: "full" | "compact";
   className?: string;
+  groupId?: string | null;
 }) {
-  const { data: expenses } = useTransactions("expense");
-  const { data: income } = useTransactions("income");
+  const { data: expenses } = useScopedTransactions("expense", groupId);
+  const { data: income } = useScopedTransactions("income", groupId);
   const currency = useCurrency();
   const currentMonth = useCurrentMonth();
 

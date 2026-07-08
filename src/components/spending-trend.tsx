@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { useTransactions, useCurrency } from "@/lib/queries";
+import { useScopedTransactions, useCurrency } from "@/lib/queries";
 import { useCurrentMonth } from "@/hooks/use-derived";
 import { computeTrend } from "@/lib/insights";
 
@@ -17,9 +17,9 @@ const TrendGraph = dynamic(
   }
 );
 
-export function SpendingTrend() {
-  const { data: expenses } = useTransactions("expense");
-  const { data: income } = useTransactions("income");
+export function SpendingTrend({ groupId = null }: { groupId?: string | null }) {
+  const { data: expenses } = useScopedTransactions("expense", groupId);
+  const { data: income } = useScopedTransactions("income", groupId);
   const currency = useCurrency();
   const currentMonth = useCurrentMonth();
 

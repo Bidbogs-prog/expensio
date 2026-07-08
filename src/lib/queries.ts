@@ -67,6 +67,17 @@ export function useGroupTransactions(kind: TxKind, groupId: string | null) {
   });
 }
 
+/**
+ * Transactions of one kind for the active scope: the personal budget when
+ * groupId is null, otherwise the given family group. Lets a component render
+ * either budget's data from a single `groupId` prop.
+ */
+export function useScopedTransactions(kind: TxKind, groupId: string | null) {
+  const personal = useTransactions(kind);
+  const group = useGroupTransactions(kind, groupId);
+  return groupId ? group : personal;
+}
+
 export function useSettings() {
   return useQuery({
     queryKey: SETTINGS_KEY,

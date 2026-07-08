@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { PieChart as PieIcon } from "lucide-react";
 import {
@@ -10,8 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useCurrency } from "@/lib/queries";
-import { useMonthTransactions, useMonthTotals, useCurrentMonth } from "@/hooks/use-derived";
+import { useCurrency, useScopedTransactions } from "@/lib/queries";
+import { useCurrentMonth } from "@/hooks/use-derived";
 import {
   TX_CONFIG,
   colorForCategory,
@@ -30,16 +31,23 @@ const PieGraph = dynamic(
   }
 );
 
-export function CategoryPieChart({ kind }: { kind: TxKind }) {
+export function CategoryPieChart({
+  kind,
+  groupId = null,
+}: {
+  kind: TxKind;
+  groupId?: string | null;
+}) {
   const cfg = TX_CONFIG[kind];
-  const isExpense = kind === "expense";
 
   const currency = useCurrency();
   const currentMonth = useCurrentMonth();
-  const totals = useMonthTotals();
-  const items = useMonthTransactions(kind);
+  const { data } = useScopedTransactions(kind, groupId);
 
-  const total = isExpense ? totals.expenseTotal : totals.incomeTotal;
+  const items = useMemo(
+    () => (data ?? []).filter((t) => t.date?.startsWith(currentMonth)),
+    [data, currentMonth]
+  );
 
   const categoryTotals = new Map<string, number>();
   items.forEach((item) => {
@@ -48,6 +56,7 @@ export function CategoryPieChart({ kind }: { kind: TxKind }) {
   });
 
   const sum = [...categoryTotals.values()].reduce((s, v) => s + v, 0);
+  const total = sum;
   const chartData: SliceDatum[] = [...categoryTotals]
     .map(([category, amount]) => ({
       category: formatCategory(category),
