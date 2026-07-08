@@ -1,6 +1,7 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/components/authProvider";
 
@@ -48,6 +49,13 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased h-full">
         <AuthProvider>{children}</AuthProvider>
+        <Script
+          src="http://localhost:8787/widget.js"
+          data-project="local-dev-key"
+          data-api="http://localhost:8787"
+          data-brand="#4f46e5"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
