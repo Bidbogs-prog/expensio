@@ -12,13 +12,16 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { expensesApi, incomeApi, templatesApi, userSettingsApi } from "./api";
+import { expensesApi, incomeApi, savingsApi, templatesApi, userSettingsApi } from "./api";
+import type { NewSavingsContribution, NewSavingsGoal } from "./api";
 import type { TxKind } from "@/lib/transaction-ui";
 import type {
   BudgetTemplate,
   Currency,
   ExpenseFormValues,
   IncomeFormValues,
+  SavingsContribution,
+  SavingsGoal,
   TemplateItem,
   Transaction,
   UserSettings,
@@ -256,6 +259,130 @@ export function useApplyTemplate(kind: TxKind, groupId: string | null = null) {
       qc.setQueryData<Transaction[]>(key, (old = []) => [...created, ...old]);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+// ── Savings goals & contributions (personal-only) ─────────────────────────────
+const GOALS_KEY = ["savings-goals"] as const;
+const CONTRIBUTIONS_KEY = ["savings-contributions"] as const;
+
+export function useSavingsGoals() {
+  return useQuery({
+    queryKey: GOALS_KEY,
+    queryFn: (): Promise<SavingsGoal[]> => savingsApi.listGoals(),
+  });
+}
+
+export function useSavingsContributions() {
+  return useQuery({
+    queryKey: CONTRIBUTIONS_KEY,
+    queryFn: (): Promise<SavingsContribution[]> => savingsApi.listContributions(),
+  });
+}
+
+export function useCreateSavingsGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (goal: NewSavingsGoal): Promise<SavingsGoal> => savingsApi.createGoal(goal),
+    onSuccess: (created) => {
+      qc.setQueryData<SavingsGoal[]>(GOALS_KEY, (old = []) => [...old, created]);
+    },
+  });
+}
+
+export function useUpdateSavingsGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Partial<NewSavingsGoal> }) =>
+      savingsApi.updateGoal(id, patch),
+    onMutate: async ({ id, patch }) => {
+      await qc.cancelQueries({ queryKey: GOALS_KEY });
+      const prev = qc.getQueryData<SavingsGoal[]>(GOALS_KEY) ?? [];
+      qc.setQueryData<SavingsGoal[]>(
+        GOALS_KEY,
+        prev.map((g) => (g.id === id ? { ...g, ...patch } : g))
+      );
+      return { prev };
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData<SavingsGoal[]>(GOALS_KEY, (old = []) =>
+        old.map((g) => (g.id === updated.id ? updated : g))
+      );
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(GOALS_KEY, ctx.prev);
+    },
+  });
+}
+
+/** Deletes a goal AND its contribution history (DB cascades; caches mirror it). */
+export function useDeleteSavingsGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string): Promise<void> => savingsApi.deleteGoal(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: GOALS_KEY });
+      await qc.cancelQueries({ queryKey: CONTRIBUTIONS_KEY });
+      const prevGoals = qc.getQueryData<SavingsGoal[]>(GOALS_KEY) ?? [];
+      const prevContribs = qc.getQueryData<SavingsContribution[]>(CONTRIBUTIONS_KEY) ?? [];
+      qc.setQueryData<SavingsGoal[]>(GOALS_KEY, prevGoals.filter((g) => g.id !== id));
+      qc.setQueryData<SavingsContribution[]>(
+        CONTRIBUTIONS_KEY,
+        prevContribs.filter((c) => c.goal_id !== id)
+      );
+      return { prevGoals, prevContribs };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx) {
+        qc.setQueryData(GOALS_KEY, ctx.prevGoals);
+        qc.setQueryData(CONTRIBUTIONS_KEY, ctx.prevContribs);
+      }
+    },
+  });
+}
+
+export function useAddSavingsContribution() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: NewSavingsContribution): Promise<SavingsContribution> =>
+      savingsApi.createContribution(input),
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: CONTRIBUTIONS_KEY });
+      const prev = qc.getQueryData<SavingsContribution[]>(CONTRIBUTIONS_KEY) ?? [];
+      const tempId = -Date.now();
+      const optimistic: SavingsContribution = {
+        id: tempId,
+        user_id: "",
+        created_at: new Date().toISOString(),
+        ...input,
+      };
+      qc.setQueryData<SavingsContribution[]>(CONTRIBUTIONS_KEY, [optimistic, ...prev]);
+      return { prev, tempId };
+    },
+    onSuccess: (created, _v, ctx) => {
+      qc.setQueryData<SavingsContribution[]>(CONTRIBUTIONS_KEY, (old = []) =>
+        old.map((c) => (c.id === ctx.tempId ? created : c))
+      );
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(CONTRIBUTIONS_KEY, ctx.prev);
+    },
+  });
+}
+
+export function useDeleteSavingsContribution() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number): Promise<void> => savingsApi.deleteContribution(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: CONTRIBUTIONS_KEY });
+      const prev = qc.getQueryData<SavingsContribution[]>(CONTRIBUTIONS_KEY) ?? [];
+      qc.setQueryData<SavingsContribution[]>(CONTRIBUTIONS_KEY, prev.filter((c) => c.id !== id));
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(CONTRIBUTIONS_KEY, ctx.prev);
+    },
   });
 }
 

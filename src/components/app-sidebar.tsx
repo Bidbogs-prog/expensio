@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   Loader2,
   LogOut,
+  PiggyBank,
   Sparkles,
   TrendingDown,
   Wallet,
@@ -36,6 +37,7 @@ const NAV_ITEMS = [
   { title: "Insights", url: "/insights", icon: Sparkles, badge: "AI" },
   { title: "Expenses", url: "/expenses", icon: TrendingDown },
   { title: "Income", url: "/income", icon: Wallet },
+  { title: "Savings", url: "/savings", icon: PiggyBank },
 ];
 
 export function AppSidebar() {

@@ -54,12 +54,12 @@ function monthLabel(month: string) {
   return `${MONTH_NAMES[m - 1]} ${y}`;
 }
 
-function shortMonth(month: string) {
+export function shortMonth(month: string) {
   const [, m] = month.split("-").map(Number);
   return MONTH_NAMES[m - 1].slice(0, 3);
 }
 
-function prevMonthOf(month: string): string {
+export function prevMonthOf(month: string): string {
   const [y, m] = month.split("-").map(Number);
   const d = new Date(y, m - 2, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;

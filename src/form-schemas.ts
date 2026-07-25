@@ -36,5 +36,16 @@ export const expenseFormSchema = z.object({
   }, "Must be a valid date"),
 });
 
+export const savingsGoalFormSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Goal name is required")
+    .max(50, "Goal name must be less than 50 characters"),
+  // Optional numeric fields — empty string means "not set".
+  target: z.string().regex(/^\d*$/, "Must be a valid number"),
+  allocation: z.string().regex(/^\d*$/, "Must be a valid number"),
+});
+
 export type IncomeFormValues = z.infer<typeof incomeFormSchema>;
 export type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
+export type SavingsGoalFormValues = z.infer<typeof savingsGoalFormSchema>;

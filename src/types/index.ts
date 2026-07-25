@@ -38,6 +38,31 @@ export interface BudgetTemplate {
   created_at?: string;
 }
 
+// ── Savings goals ─────────────────────────────────────────────────────────────
+/** A named savings jar. Contributions to it are NOT expenses. */
+export interface SavingsGoal {
+  id: string;
+  user_id: string;
+  name: string;
+  /** Lifetime target; null = open-ended goal. */
+  target_amount: number | null;
+  /** Planned amount to set aside each month; null = no plan. */
+  monthly_allocation: number | null;
+  /** Hex color used on cards and charts. */
+  color: string;
+  created_at?: string;
+}
+
+/** One amount set aside toward a goal on a date. */
+export interface SavingsContribution {
+  id: number;
+  user_id: string;
+  goal_id: string;
+  amount: number;
+  date: string;
+  created_at?: string;
+}
+
 export interface UserSettings {
   id?: number;
   user_id: string;
@@ -89,4 +114,8 @@ export interface PendingInvite {
 
 // ── Form value types (inferred from Zod schemas in form-schemas.ts) ──────────
 // Re-exported here so all consumers import from one place.
-export type { ExpenseFormValues, IncomeFormValues } from "@/form-schemas";
+export type {
+  ExpenseFormValues,
+  IncomeFormValues,
+  SavingsGoalFormValues,
+} from "@/form-schemas";

@@ -6,9 +6,14 @@
 "use client";
 
 import { useMemo } from "react";
-import { useTransactions } from "@/lib/queries";
+import {
+  useSavingsContributions,
+  useSavingsGoals,
+  useTransactions,
+} from "@/lib/queries";
 import { useUiStore } from "@/hooks/use-ui-store";
 import { computeAnalytics } from "@/lib/insights";
+import { computeSavingsSummary } from "@/lib/savings";
 
 export function useCurrentMonth() {
   return useUiStore((s) => s.currentMonth);
@@ -23,5 +28,17 @@ export function useAnalytics() {
   return useMemo(
     () => computeAnalytics(expenses ?? [], income ?? [], month),
     [expenses, income, month]
+  );
+}
+
+/** Per-goal + overall savings totals for the selected month, derived once. */
+export function useSavingsSummary() {
+  const month = useUiStore((s) => s.currentMonth);
+  const { data: goals } = useSavingsGoals();
+  const { data: contributions } = useSavingsContributions();
+
+  return useMemo(
+    () => computeSavingsSummary(goals ?? [], contributions ?? [], month),
+    [goals, contributions, month]
   );
 }

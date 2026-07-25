@@ -18,17 +18,6 @@ import { BorderBeam } from "@/components/magicui/border-beam";
 import { NumberTicker } from "@/components/magicui/number-ticker";
 import { cn } from "@/lib/utils";
 
-const ALL_FEATURES = [
-  "Unlimited expenses & income",
-  "Categorical tracking & breakdowns",
-  "Unlimited AI recommendations & warnings",
-  "Spending trend & 6-month forecasts",
-  "Burn-rate & overspend projections",
-  "Unlimited history, all months",
-  "Family shared household groups",
-  "Multi-currency support",
-];
-
 function GoogleIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24">
@@ -94,7 +83,6 @@ export function LandingPage({ onSignInGoogle, onDemo, error }: LandingPageProps)
           <div className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
             <a href="#features" className="transition-colors hover:text-foreground">Features</a>
             <a href="#ai" className="transition-colors hover:text-foreground">Expensio AI</a>
-            <a href="#pricing" className="transition-colors hover:text-foreground">Pricing</a>
           </div>
           <Button onClick={onSignInGoogle} size="sm" className="font-semibold">
             Sign in
@@ -277,59 +265,6 @@ export function LandingPage({ onSignInGoogle, onDemo, error }: LandingPageProps)
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Pricing ───────────────────────────────────────────────────── */}
-      <section id="pricing" className="mx-auto w-full max-w-5xl px-5 py-24">
-        <SectionHeading
-          eyebrow="Simple pricing"
-          title="Everything. Free, forever."
-          subtitle="No tiers, no paywalls, no card. Every feature — AI insights, forecasts, family groups — unlocked for everyone."
-        />
-        <div className="mt-12 flex justify-center">
-          <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-primary/40 bg-card p-8 shadow-medium glow-primary">
-            <BorderBeam duration={8} />
-            <div className="aurora-blob -right-10 -top-16 h-40 w-40 bg-primary/20 animate-aurora" />
-
-            <div className="relative flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                <Sparkles className="h-3.5 w-3.5" />
-                Full access
-              </span>
-              <span className="rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
-                $0 / forever
-              </span>
-            </div>
-
-            <div className="relative mt-6 flex items-baseline gap-1.5">
-              <span className="font-display text-6xl font-extrabold tabular tracking-tight">$0</span>
-              <span className="text-base text-muted-foreground">/ month</span>
-            </div>
-            <p className="relative mt-2 text-sm text-muted-foreground">
-              The complete financial co-pilot — nothing held back.
-            </p>
-
-            <Button
-              onClick={onSignInGoogle}
-              size="lg"
-              className="relative mt-6 h-12 w-full text-sm font-semibold glow-primary"
-            >
-              <GoogleIcon className="h-5 w-5" />
-              Start free with Google
-            </Button>
-
-            <ul className="relative mt-7 grid gap-3">
-              {ALL_FEATURES.map((f) => (
-                <li key={f} className="flex items-start gap-2.5 text-sm">
-                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-                    <Check className="h-3 w-3" />
-                  </span>
-                  <span className="text-foreground/90">{f}</span>
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
       </section>

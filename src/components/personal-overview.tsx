@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { PiggyBank, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { useCurrency } from "@/lib/queries";
-import { useAnalytics, useCurrentMonth } from "@/hooks/use-derived";
+import { useAnalytics, useCurrentMonth, useSavingsSummary } from "@/hooks/use-derived";
 import { StatCard } from "@/components/stat-card";
 import { CategoryPieChart } from "@/components/category-pie-chart";
 import { InsightsPanel } from "@/components/insights-panel";
@@ -13,9 +14,11 @@ export function PersonalOverview() {
   const currency = useCurrency();
   const currentMonth = useCurrentMonth();
   const a = useAnalytics();
+  const savings = useSavingsSummary();
 
-  const savingsPct = Math.round(a.savingsRate * 100);
   const expensePct = Math.round(a.expenseDelta * 100);
+  const savedPctOfIncome =
+    a.incomeTotal > 0 ? Math.round((savings.monthTotal / a.incomeTotal) * 100) : null;
 
   return (
     <div className="space-y-6">
@@ -58,16 +61,23 @@ export function PersonalOverview() {
           }
         />
         <StatCard
-          label="Savings rate"
-          value={a.incomeTotal > 0 ? savingsPct : "—"}
-          unit={a.incomeTotal > 0 ? "%" : undefined}
+          label="Saved"
+          value={Math.round(savings.monthTotal)}
+          unit={currency}
           icon={PiggyBank}
-          tone="accent"
+          tone="sky"
           featured
           hint={
-            <span className="text-xs text-muted-foreground">
-              {savingsPct >= 20 ? "On target" : a.incomeTotal > 0 ? "Aim for 20%" : "Add income"}
-            </span>
+            <Link
+              href="/savings"
+              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {savings.goals.length === 0
+                ? "Create your first goal →"
+                : savedPctOfIncome !== null && savings.monthTotal > 0
+                  ? `${savedPctOfIncome}% of income · ${savings.goals.length} goal${savings.goals.length === 1 ? "" : "s"}`
+                  : `${savings.goals.length} goal${savings.goals.length === 1 ? "" : "s"} →`}
+            </Link>
           }
         />
       </div>

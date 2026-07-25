@@ -7,7 +7,7 @@ import { NumberTicker } from "@/components/magicui/number-ticker";
 import { BorderBeam } from "@/components/magicui/border-beam";
 import { cn } from "@/lib/utils";
 
-type Tone = "accent" | "positive" | "negative" | "neutral";
+type Tone = "accent" | "positive" | "negative" | "neutral" | "sky";
 
 const TONE: Record<Tone, { chip: string; value: string; glow?: string; beam: string }> = {
   accent: {
@@ -30,6 +30,13 @@ const TONE: Record<Tone, { chip: string; value: string; glow?: string; beam: str
     chip: "bg-secondary text-muted-foreground ring-border",
     value: "text-foreground",
     beam: "hsl(var(--primary))",
+  },
+  // Savings identity — money set aside, neither income nor spending.
+  sky: {
+    chip: "bg-sky-500/12 text-sky-400 ring-sky-500/20",
+    value: "text-sky-400",
+    glow: "before:bg-sky-500/10",
+    beam: "#38bdf8", // sky-400
   },
 };
 

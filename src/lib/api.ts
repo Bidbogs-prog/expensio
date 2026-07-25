@@ -1,6 +1,15 @@
 // src/lib/api.ts
 import { supabase } from './supabase'
-import type { BudgetTemplate, Expense, Income, TemplateItem, Transaction, UserSettings } from '@/types'
+import type {
+  BudgetTemplate,
+  Expense,
+  Income,
+  SavingsContribution,
+  SavingsGoal,
+  TemplateItem,
+  Transaction,
+  UserSettings,
+} from '@/types'
 
 // Payload for creating a transaction (personal when group_id is omitted/null).
 export type NewTransaction = Omit<Transaction, 'id' | 'created_at' | 'user_id'>
@@ -333,6 +342,104 @@ export const templatesApi = {
     return withAuth(async () => {
       const { error } = await supabase.from('budget_templates').delete().eq('id', id)
       if (error) throw new Error(`Failed to delete template: ${error.message}`)
+    })
+  },
+}
+
+// Savings goals & contributions API (personal-only; savings are never expenses)
+export type NewSavingsGoal = Omit<SavingsGoal, 'id' | 'created_at' | 'user_id'>
+export type NewSavingsContribution = Omit<SavingsContribution, 'id' | 'created_at' | 'user_id'>
+
+export const savingsApi = {
+  async listGoals(): Promise<SavingsGoal[]> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('savings_goals')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true })
+
+      if (error) throw new Error(`Failed to fetch savings goals: ${error.message}`)
+      return data || []
+    })
+  },
+
+  async createGoal(goal: NewSavingsGoal): Promise<SavingsGoal> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('savings_goals')
+        .insert([{ ...goal, user_id: userId }])
+        .select()
+        .single()
+
+      if (error) throw new Error(`Failed to create savings goal: ${error.message}`)
+      return data
+    })
+  },
+
+  async updateGoal(id: string, patch: Partial<NewSavingsGoal>): Promise<SavingsGoal> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('savings_goals')
+        .update(patch)
+        .eq('id', id)
+        .eq('user_id', userId) // Security: ensure user owns this goal
+        .select()
+        .single()
+
+      if (error) throw new Error(`Failed to update savings goal: ${error.message}`)
+      return data
+    })
+  },
+
+  // Cascades: deleting a goal removes its contributions (FK on delete cascade).
+  async deleteGoal(id: string): Promise<void> {
+    return withAuth(async (userId) => {
+      const { error } = await supabase
+        .from('savings_goals')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId)
+
+      if (error) throw new Error(`Failed to delete savings goal: ${error.message}`)
+    })
+  },
+
+  async listContributions(): Promise<SavingsContribution[]> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('savings_contributions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+
+      if (error) throw new Error(`Failed to fetch contributions: ${error.message}`)
+      return data || []
+    })
+  },
+
+  async createContribution(input: NewSavingsContribution): Promise<SavingsContribution> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('savings_contributions')
+        .insert([{ ...input, user_id: userId }])
+        .select()
+        .single()
+
+      if (error) throw new Error(`Failed to add contribution: ${error.message}`)
+      return data
+    })
+  },
+
+  async deleteContribution(id: number): Promise<void> {
+    return withAuth(async (userId) => {
+      const { error } = await supabase
+        .from('savings_contributions')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId)
+
+      if (error) throw new Error(`Failed to delete contribution: ${error.message}`)
     })
   },
 }
