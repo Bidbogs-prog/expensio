@@ -24,10 +24,11 @@ export function useAnalytics() {
   const month = useUiStore((s) => s.currentMonth);
   const { data: expenses } = useTransactions("expense");
   const { data: income } = useTransactions("income");
+  const { data: contributions } = useSavingsContributions(null);
 
   return useMemo(
-    () => computeAnalytics(expenses ?? [], income ?? [], month),
-    [expenses, income, month]
+    () => computeAnalytics(expenses ?? [], income ?? [], month, contributions ?? []),
+    [expenses, income, month, contributions]
   );
 }
 

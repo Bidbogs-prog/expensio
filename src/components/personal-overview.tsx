@@ -36,7 +36,7 @@ export function PersonalOverview() {
             a.balance < 0 ? (
               <span className="text-xs font-medium text-rose-400">Over budget</span>
             ) : (
-              <span className="text-xs text-muted-foreground">Income − expenses</span>
+              <span className="text-xs text-muted-foreground">Income − expenses − savings</span>
             )
           }
         />

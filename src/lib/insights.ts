@@ -6,7 +6,7 @@
 // projection and concentration risk. No network, no API key — instant + free.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { Transaction } from "@/types";
+import type { SavingsContribution, Transaction } from "@/types";
 
 export type InsightTone =
   | "danger"
@@ -31,8 +31,11 @@ export interface Analytics {
   month: string;
   expenseTotal: number;
   incomeTotal: number;
+  /** Contributions moved into savings goals this month. */
+  savingsTotal: number;
+  /** income − expenses − savings contributions. */
   balance: number;
-  /** Saved / income, 0–1. */
+  /** (income − expenses) / income, 0–1 — money not spent (saved or left over). */
   savingsRate: number;
   prevExpenseTotal: number;
   expenseDelta: number; // signed fraction vs last month
@@ -96,11 +99,20 @@ function elapsedDays(month: string) {
   return Math.min(now.getDate(), total);
 }
 
+/** Sum of savings contributions dated within `month`. */
+function savingsInMonth(contributions: SavingsContribution[], month: string) {
+  return contributions.reduce(
+    (s, c) => (c.date?.startsWith(month) ? s + Number(c.amount) : s),
+    0
+  );
+}
+
 // ── Core analytics ───────────────────────────────────────────────────────────
 export function computeAnalytics(
   expenses: Transaction[],
   income: Transaction[],
-  month: string
+  month: string,
+  contributions: SavingsContribution[] = []
 ): Analytics {
   const monthExp = inMonth(expenses, month);
   const monthInc = inMonth(income, month);
@@ -109,8 +121,10 @@ export function computeAnalytics(
   const expenseTotal = sum(monthExp);
   const incomeTotal = sum(monthInc);
   const prevExpenseTotal = sum(prevExp);
-  const balance = incomeTotal - expenseTotal;
-  const savingsRate = incomeTotal > 0 ? balance / incomeTotal : 0;
+  const savingsTotal = savingsInMonth(contributions, month);
+  // Money set aside for goals leaves the month's budget just like an expense.
+  const balance = incomeTotal - expenseTotal - savingsTotal;
+  const savingsRate = incomeTotal > 0 ? (incomeTotal - expenseTotal) / incomeTotal : 0;
   const expenseDelta =
     prevExpenseTotal > 0 ? (expenseTotal - prevExpenseTotal) / prevExpenseTotal : 0;
 
@@ -137,6 +151,7 @@ export function computeAnalytics(
     month,
     expenseTotal,
     incomeTotal,
+    savingsTotal,
     balance,
     savingsRate,
     prevExpenseTotal,
@@ -163,7 +178,8 @@ export function computeTrend(
   expenses: Transaction[],
   income: Transaction[],
   month: string,
-  months = 6
+  months = 6,
+  contributions: SavingsContribution[] = []
 ): TrendPoint[] {
   const out: TrendPoint[] = [];
   let cur = month;
@@ -175,7 +191,7 @@ export function computeTrend(
       label: shortMonth(cur),
       expense,
       income: incomeT,
-      net: incomeT - expense,
+      net: incomeT - expense - savingsInMonth(contributions, cur),
     });
     cur = prevMonthOf(cur);
   }
@@ -189,9 +205,10 @@ export function generateInsights(
   expenses: Transaction[],
   income: Transaction[],
   month: string,
-  currency: string
+  currency: string,
+  contributions: SavingsContribution[] = []
 ): Insight[] {
-  const a = computeAnalytics(expenses, income, month);
+  const a = computeAnalytics(expenses, income, month, contributions);
   const money = (n: number) => `${Math.round(n).toLocaleString()} ${currency}`;
   const out: Insight[] = [];
 
@@ -211,13 +228,15 @@ export function generateInsights(
     return out;
   }
 
-  // 1. Spending exceeds income (most severe).
+  // 1. Spending (incl. savings set aside) exceeds income (most severe).
   if (a.balance < 0) {
     out.push({
       id: "deficit",
       tone: "danger",
       title: "You're spending more than you earn",
-      detail: `Expenses are ${money(-a.balance)} over your income for ${monthLabel(
+      detail: `${
+        a.savingsTotal > 0 ? "Expenses plus savings contributions are" : "Expenses are"
+      } ${money(-a.balance)} over your income for ${monthLabel(
         month
       )}. Trim discretionary categories before month-end.`,
       metric: money(a.balance),
@@ -291,8 +310,9 @@ export function generateInsights(
     });
   }
 
-  // 5. Savings-rate coaching.
+  // 5. Savings-rate coaching (money not spent = goal contributions + leftover).
   if (a.incomeTotal > 0) {
+    const kept = a.incomeTotal - a.expenseTotal;
     if (a.savingsRate >= 0.2) {
       out.push({
         id: "savings-good",
@@ -300,7 +320,9 @@ export function generateInsights(
         title: "Healthy savings rate",
         detail: `You're keeping ${Math.round(
           a.savingsRate * 100
-        )}% of your income — ${money(a.balance)} saved this month. Keep it up.`,
+        )}% of your income — ${money(kept)} not spent this month${
+          a.savingsTotal > 0 ? `, ${money(a.savingsTotal)} of it in savings goals` : ""
+        }. Keep it up.`,
         metric: `${Math.round(a.savingsRate * 100)}%`,
         weight: 40,
       });
@@ -312,7 +334,7 @@ export function generateInsights(
         detail: `Only ${Math.round(
           a.savingsRate * 100
         )}% of income is left over. Aim for 20% — that's about ${money(
-          a.incomeTotal * 0.2 - a.balance
+          a.incomeTotal * 0.2 - kept
         )} more to set aside.`,
         metric: `${Math.round(a.savingsRate * 100)}%`,
         weight: 50,

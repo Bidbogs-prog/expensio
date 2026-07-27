@@ -1,9 +1,10 @@
 // src/lib/savings.ts
-// Pure, deterministic savings derivations. Savings live in their own mental
-// account — contributions are set aside toward named goals and NEVER count as
-// expenses or enter the income − expenses balance. Everything here is derived
-// from (goals, contributions, viewed month) so the month navigator works the
-// same way it does for the ledger.
+// Pure, deterministic savings derivations. Contributions are set aside toward
+// named goals; the money leaves the month's budget like an expense, so
+// computeAnalytics subtracts them from the balance (they still aren't expense
+// transactions — no category, no ledger row). Everything here is derived from
+// (goals, contributions, viewed month) so the month navigator works the same
+// way it does for the ledger.
 
 import type { SavingsContribution, SavingsGoal } from "@/types";
 import { prevMonthOf, shortMonth } from "@/lib/insights";

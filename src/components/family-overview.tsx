@@ -11,7 +11,7 @@ import { InvitePeople } from "@/components/family/invite-people";
 import { SharedLedger } from "@/components/family/shared-ledger";
 import { MemberBreakdown } from "@/components/family/member-breakdown";
 import { useAuthUser } from "@/lib/auth-context";
-import { useCurrency, useGroupTransactions } from "@/lib/queries";
+import { useCurrency, useGroupTransactions, useSavingsContributions } from "@/lib/queries";
 import { useUiStore } from "@/hooks/use-ui-store";
 import { useRealtimeLedger } from "@/hooks/use-realtime-ledger";
 import { computeAnalytics } from "@/lib/insights";
@@ -42,6 +42,7 @@ export function FamilyOverview({
   // Shared budget = transactions tagged to this group (group_id), across members.
   const { data: groupExpenses = [], isLoading: expLoading } = useGroupTransactions("expense", groupId);
   const { data: groupIncome = [], isLoading: incLoading } = useGroupTransactions("income", groupId);
+  const { data: groupContributions = [] } = useSavingsContributions(groupId);
   const ledgerLoading = expLoading || incLoading;
 
   // Live household updates: refresh when any member changes a shared row.
@@ -62,8 +63,8 @@ export function FamilyOverview({
   );
 
   const analytics = useMemo(
-    () => computeAnalytics(groupExpenses, groupIncome, month),
-    [groupExpenses, groupIncome, month]
+    () => computeAnalytics(groupExpenses, groupIncome, month, groupContributions),
+    [groupExpenses, groupIncome, month, groupContributions]
   );
 
   const fmt = (n: number) => Math.round(n).toLocaleString();

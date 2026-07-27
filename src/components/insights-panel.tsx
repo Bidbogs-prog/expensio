@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useScopedTransactions, useCurrency } from "@/lib/queries";
+import { useScopedTransactions, useCurrency, useSavingsContributions } from "@/lib/queries";
 import { useCurrentMonth } from "@/hooks/use-derived";
 import { generateInsights, type Insight, type InsightTone } from "@/lib/insights";
 import { cn } from "@/lib/utils";
@@ -96,12 +96,14 @@ export function InsightsPanel({
 }) {
   const { data: expenses } = useScopedTransactions("expense", groupId);
   const { data: income } = useScopedTransactions("income", groupId);
+  const { data: contributions } = useSavingsContributions(groupId);
   const currency = useCurrency();
   const currentMonth = useCurrentMonth();
 
   const insights = useMemo(
-    () => generateInsights(expenses ?? [], income ?? [], currentMonth, currency),
-    [expenses, income, currentMonth, currency]
+    () =>
+      generateInsights(expenses ?? [], income ?? [], currentMonth, currency, contributions ?? []),
+    [expenses, income, currentMonth, currency, contributions]
   );
 
   const shown = variant === "compact" ? insights.slice(0, 3) : insights;
