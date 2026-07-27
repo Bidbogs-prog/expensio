@@ -262,126 +262,142 @@ export function useApplyTemplate(kind: TxKind, groupId: string | null = null) {
   });
 }
 
-// ── Savings goals & contributions (personal-only) ─────────────────────────────
-const GOALS_KEY = ["savings-goals"] as const;
-const CONTRIBUTIONS_KEY = ["savings-contributions"] as const;
+// ── Savings goals & contributions (scoped by groupId like transactions) ───────
+// Group keys share the "group-savings" prefix so realtime can invalidate all
+// shared savings caches at once.
+const goalsKey = (groupId?: string | null) =>
+  (groupId ? ["group-savings", "goals", groupId] : ["savings-goals"]) as readonly unknown[];
+const contributionsKey = (groupId?: string | null) =>
+  (groupId
+    ? ["group-savings", "contributions", groupId]
+    : ["savings-contributions"]) as readonly unknown[];
 
-export function useSavingsGoals() {
+export function useSavingsGoals(groupId: string | null = null) {
   return useQuery({
-    queryKey: GOALS_KEY,
-    queryFn: (): Promise<SavingsGoal[]> => savingsApi.listGoals(),
+    queryKey: goalsKey(groupId),
+    queryFn: (): Promise<SavingsGoal[]> => savingsApi.listGoals(groupId),
   });
 }
 
-export function useSavingsContributions() {
+export function useSavingsContributions(groupId: string | null = null) {
   return useQuery({
-    queryKey: CONTRIBUTIONS_KEY,
-    queryFn: (): Promise<SavingsContribution[]> => savingsApi.listContributions(),
+    queryKey: contributionsKey(groupId),
+    queryFn: (): Promise<SavingsContribution[]> => savingsApi.listContributions(groupId),
   });
 }
 
-export function useCreateSavingsGoal() {
+export function useCreateSavingsGoal(groupId: string | null = null) {
   const qc = useQueryClient();
+  const key = goalsKey(groupId);
   return useMutation({
-    mutationFn: (goal: NewSavingsGoal): Promise<SavingsGoal> => savingsApi.createGoal(goal),
+    mutationFn: (goal: Omit<NewSavingsGoal, "group_id">): Promise<SavingsGoal> =>
+      savingsApi.createGoal({ ...goal, group_id: groupId ?? null }),
     onSuccess: (created) => {
-      qc.setQueryData<SavingsGoal[]>(GOALS_KEY, (old = []) => [...old, created]);
+      qc.setQueryData<SavingsGoal[]>(key, (old = []) => [...old, created]);
     },
   });
 }
 
-export function useUpdateSavingsGoal() {
+export function useUpdateSavingsGoal(groupId: string | null = null) {
   const qc = useQueryClient();
+  const key = goalsKey(groupId);
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<NewSavingsGoal> }) =>
       savingsApi.updateGoal(id, patch),
     onMutate: async ({ id, patch }) => {
-      await qc.cancelQueries({ queryKey: GOALS_KEY });
-      const prev = qc.getQueryData<SavingsGoal[]>(GOALS_KEY) ?? [];
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<SavingsGoal[]>(key) ?? [];
       qc.setQueryData<SavingsGoal[]>(
-        GOALS_KEY,
+        key,
         prev.map((g) => (g.id === id ? { ...g, ...patch } : g))
       );
       return { prev };
     },
     onSuccess: (updated) => {
-      qc.setQueryData<SavingsGoal[]>(GOALS_KEY, (old = []) =>
+      qc.setQueryData<SavingsGoal[]>(key, (old = []) =>
         old.map((g) => (g.id === updated.id ? updated : g))
       );
     },
     onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(GOALS_KEY, ctx.prev);
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
     },
   });
 }
 
 /** Deletes a goal AND its contribution history (DB cascades; caches mirror it). */
-export function useDeleteSavingsGoal() {
+export function useDeleteSavingsGoal(groupId: string | null = null) {
   const qc = useQueryClient();
+  const gKey = goalsKey(groupId);
+  const cKey = contributionsKey(groupId);
   return useMutation({
     mutationFn: (id: string): Promise<void> => savingsApi.deleteGoal(id),
     onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: GOALS_KEY });
-      await qc.cancelQueries({ queryKey: CONTRIBUTIONS_KEY });
-      const prevGoals = qc.getQueryData<SavingsGoal[]>(GOALS_KEY) ?? [];
-      const prevContribs = qc.getQueryData<SavingsContribution[]>(CONTRIBUTIONS_KEY) ?? [];
-      qc.setQueryData<SavingsGoal[]>(GOALS_KEY, prevGoals.filter((g) => g.id !== id));
+      await qc.cancelQueries({ queryKey: gKey });
+      await qc.cancelQueries({ queryKey: cKey });
+      const prevGoals = qc.getQueryData<SavingsGoal[]>(gKey) ?? [];
+      const prevContribs = qc.getQueryData<SavingsContribution[]>(cKey) ?? [];
+      qc.setQueryData<SavingsGoal[]>(gKey, prevGoals.filter((g) => g.id !== id));
       qc.setQueryData<SavingsContribution[]>(
-        CONTRIBUTIONS_KEY,
+        cKey,
         prevContribs.filter((c) => c.goal_id !== id)
       );
       return { prevGoals, prevContribs };
     },
     onError: (_e, _v, ctx) => {
       if (ctx) {
-        qc.setQueryData(GOALS_KEY, ctx.prevGoals);
-        qc.setQueryData(CONTRIBUTIONS_KEY, ctx.prevContribs);
+        qc.setQueryData(gKey, ctx.prevGoals);
+        qc.setQueryData(cKey, ctx.prevContribs);
       }
     },
   });
 }
 
-export function useAddSavingsContribution() {
+export function useAddSavingsContribution(groupId: string | null = null) {
   const qc = useQueryClient();
+  const key = contributionsKey(groupId);
   return useMutation({
-    mutationFn: (input: NewSavingsContribution): Promise<SavingsContribution> =>
-      savingsApi.createContribution(input),
+    mutationFn: (input: Omit<NewSavingsContribution, "group_id">): Promise<SavingsContribution> =>
+      // group_id is stamped server-side from the goal; sending the scope keeps
+      // the round-trip consistent with what RLS/trigger will produce.
+      savingsApi.createContribution({ ...input, group_id: groupId ?? null }),
     onMutate: async (input) => {
-      await qc.cancelQueries({ queryKey: CONTRIBUTIONS_KEY });
-      const prev = qc.getQueryData<SavingsContribution[]>(CONTRIBUTIONS_KEY) ?? [];
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<SavingsContribution[]>(key) ?? [];
       const tempId = -Date.now();
       const optimistic: SavingsContribution = {
         id: tempId,
         user_id: "",
         created_at: new Date().toISOString(),
+        group_id: groupId ?? null,
         ...input,
       };
-      qc.setQueryData<SavingsContribution[]>(CONTRIBUTIONS_KEY, [optimistic, ...prev]);
+      qc.setQueryData<SavingsContribution[]>(key, [optimistic, ...prev]);
       return { prev, tempId };
     },
     onSuccess: (created, _v, ctx) => {
-      qc.setQueryData<SavingsContribution[]>(CONTRIBUTIONS_KEY, (old = []) =>
+      qc.setQueryData<SavingsContribution[]>(key, (old = []) =>
         old.map((c) => (c.id === ctx.tempId ? created : c))
       );
     },
     onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(CONTRIBUTIONS_KEY, ctx.prev);
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
     },
   });
 }
 
-export function useDeleteSavingsContribution() {
+export function useDeleteSavingsContribution(groupId: string | null = null) {
   const qc = useQueryClient();
+  const key = contributionsKey(groupId);
   return useMutation({
     mutationFn: (id: number): Promise<void> => savingsApi.deleteContribution(id),
     onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: CONTRIBUTIONS_KEY });
-      const prev = qc.getQueryData<SavingsContribution[]>(CONTRIBUTIONS_KEY) ?? [];
-      qc.setQueryData<SavingsContribution[]>(CONTRIBUTIONS_KEY, prev.filter((c) => c.id !== id));
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<SavingsContribution[]>(key) ?? [];
+      qc.setQueryData<SavingsContribution[]>(key, prev.filter((c) => c.id !== id));
       return { prev };
     },
     onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(CONTRIBUTIONS_KEY, ctx.prev);
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
     },
   });
 }

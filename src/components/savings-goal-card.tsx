@@ -19,14 +19,16 @@ export function SavingsGoalCard({
   summary,
   currency,
   month,
+  groupId = null,
 }: {
   summary: GoalSummary;
   currency: string;
   month: string;
+  groupId?: string | null;
 }) {
   const { goal, lifetimeTotal, monthTotal, remainingThisMonth, funded, targetPct } = summary;
-  const add = useAddSavingsContribution();
-  const remove = useDeleteSavingsGoal();
+  const add = useAddSavingsContribution(groupId);
+  const remove = useDeleteSavingsGoal(groupId);
   const [amount, setAmount] = useState("");
 
   const monthName = shortMonth(month);

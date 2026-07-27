@@ -18,9 +18,9 @@ const SavingsGraph = dynamic(
 );
 
 /** Cumulative saved-so-far, stacked by goal, over the last 6 months. */
-export function SavingsGrowth() {
-  const { data: goals = [] } = useSavingsGoals();
-  const { data: contributions = [] } = useSavingsContributions();
+export function SavingsGrowth({ groupId = null }: { groupId?: string | null }) {
+  const { data: goals = [] } = useSavingsGoals(groupId);
+  const { data: contributions = [] } = useSavingsContributions(groupId);
   const currency = useCurrency();
   const currentMonth = useCurrentMonth();
 

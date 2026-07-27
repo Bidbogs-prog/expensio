@@ -19,9 +19,15 @@ import { savingsGoalFormSchema, type SavingsGoalFormValues } from "@/form-schema
 import { nextGoalColor } from "@/lib/savings";
 
 /** Create a savings jar: name it, optionally give it a target and a monthly plan. */
-export function SavingsGoalForm({ currency }: { currency: string }) {
-  const { data: goals } = useSavingsGoals();
-  const create = useCreateSavingsGoal();
+export function SavingsGoalForm({
+  currency,
+  groupId = null,
+}: {
+  currency: string;
+  groupId?: string | null;
+}) {
+  const { data: goals } = useSavingsGoals(groupId);
+  const create = useCreateSavingsGoal(groupId);
 
   const form = useForm<SavingsGoalFormValues>({
     resolver: zodResolver(savingsGoalFormSchema),
@@ -51,7 +57,9 @@ export function SavingsGoalForm({ currency }: { currency: string }) {
             New goal
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            A jar for money that leaves the spending pool
+            {groupId
+              ? "A shared jar the whole household funds together"
+              : "A jar for money that leaves the spending pool"}
           </p>
         </div>
       </div>

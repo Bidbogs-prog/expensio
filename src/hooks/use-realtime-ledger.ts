@@ -1,7 +1,8 @@
 // src/hooks/use-realtime-ledger.ts
-// Subscribes to Supabase Realtime changes on expenses/income and refreshes the
-// shared family ledger when a (visible) co-member's row changes. Realtime applies
-// RLS per subscriber, so we only receive events for rows we're allowed to read.
+// Subscribes to Supabase Realtime changes on expenses/income/savings and
+// refreshes the shared family caches when a (visible) co-member's row changes.
+// Realtime applies RLS per subscriber, so we only receive events for rows we're
+// allowed to read.
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -20,6 +21,7 @@ export function useRealtimeLedger(enabled: boolean) {
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => {
         qc.invalidateQueries({ queryKey: ["group-tx"] });
+        qc.invalidateQueries({ queryKey: ["group-savings"] });
       }, 300);
     };
 
@@ -27,6 +29,8 @@ export function useRealtimeLedger(enabled: boolean) {
       .channel("household-ledger")
       .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, invalidateSoon)
       .on("postgres_changes", { event: "*", schema: "public", table: "income" }, invalidateSoon)
+      .on("postgres_changes", { event: "*", schema: "public", table: "savings_goals" }, invalidateSoon)
+      .on("postgres_changes", { event: "*", schema: "public", table: "savings_contributions" }, invalidateSoon)
       .subscribe();
 
     return () => {

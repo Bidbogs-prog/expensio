@@ -50,6 +50,8 @@ export interface SavingsGoal {
   monthly_allocation: number | null;
   /** Hex color used on cards and charts. */
   color: string;
+  /** null/undefined = personal; a group id = shared family goal. */
+  group_id?: string | null;
   created_at?: string;
 }
 
@@ -60,6 +62,8 @@ export interface SavingsContribution {
   goal_id: string;
   amount: number;
   date: string;
+  /** Mirrors the goal's scope; stamped server-side by trigger. */
+  group_id?: string | null;
   created_at?: string;
 }
 

@@ -31,11 +31,14 @@ export function useAnalytics() {
   );
 }
 
-/** Per-goal + overall savings totals for the selected month, derived once. */
-export function useSavingsSummary() {
+/**
+ * Per-goal + overall savings totals for the selected month, derived once.
+ * Personal when groupId is null, otherwise the family group's shared goals.
+ */
+export function useSavingsSummary(groupId: string | null = null) {
   const month = useUiStore((s) => s.currentMonth);
-  const { data: goals } = useSavingsGoals();
-  const { data: contributions } = useSavingsContributions();
+  const { data: goals } = useSavingsGoals(groupId);
+  const { data: contributions } = useSavingsContributions(groupId);
 
   return useMemo(
     () => computeSavingsSummary(goals ?? [], contributions ?? [], month),

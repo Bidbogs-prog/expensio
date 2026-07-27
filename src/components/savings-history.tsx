@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { History, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { MemberAvatar } from "@/components/member-avatar";
 import {
   useCurrency,
   useDeleteSavingsContribution,
@@ -11,14 +12,26 @@ import {
   useSavingsGoals,
 } from "@/lib/queries";
 import { useCurrentMonth } from "@/hooks/use-derived";
+import type { GroupMember } from "@/types";
 
-/** The viewed month's contributions, newest first, each removable. */
-export function SavingsHistory() {
-  const { data: goals = [] } = useSavingsGoals();
-  const { data: contributions = [] } = useSavingsContributions();
+/**
+ * The viewed month's contributions, newest first. In family scope each row is
+ * attributed to the member who made it; you can only remove your own.
+ */
+export function SavingsHistory({
+  groupId = null,
+  members,
+  currentUserId = null,
+}: {
+  groupId?: string | null;
+  members?: Map<string, GroupMember>;
+  currentUserId?: string | null;
+}) {
+  const { data: goals = [] } = useSavingsGoals(groupId);
+  const { data: contributions = [] } = useSavingsContributions(groupId);
   const currency = useCurrency();
   const month = useCurrentMonth();
-  const remove = useDeleteSavingsContribution();
+  const remove = useDeleteSavingsContribution(groupId);
 
   const goalById = useMemo(() => new Map(goals.map((g) => [g.id, g])), [goals]);
   const rows = useMemo(
@@ -40,7 +53,9 @@ export function SavingsHistory() {
             This month&apos;s contributions
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Money moved into goals — not counted as spending
+            {groupId
+              ? "Everything the household set aside — not counted as spending"
+              : "Money moved into goals — not counted as spending"}
           </p>
         </div>
       </div>
@@ -53,6 +68,12 @@ export function SavingsHistory() {
         <ul className="divide-y divide-border/60">
           {rows.map((c) => {
             const goal = goalById.get(c.goal_id);
+            const member = groupId ? members?.get(c.user_id) : undefined;
+            const memberLabel =
+              member?.profile?.full_name ?? member?.profile?.email ?? "Member";
+            // In family scope you can only delete what you contributed (RLS
+            // enforces this server-side too).
+            const canDelete = !groupId || c.user_id === currentUserId;
             return (
               <li key={c.id} className="group flex items-center gap-3 py-2.5">
                 <span
@@ -62,20 +83,32 @@ export function SavingsHistory() {
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">
                   {goal?.name ?? "Deleted goal"}
                 </span>
+                {groupId && (
+                  <span title={memberLabel}>
+                    <MemberAvatar
+                      id={c.user_id}
+                      label={memberLabel}
+                      avatarUrl={member?.profile?.avatar_url}
+                      size={20}
+                    />
+                  </span>
+                )}
                 <span className="text-xs text-muted-foreground">{c.date}</span>
                 <span className="font-mono text-sm font-semibold tabular text-sky-400">
                   +{Math.round(Number(c.amount)).toLocaleString()} {currency}
                 </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => remove.mutate(c.id)}
-                  disabled={remove.isPending}
-                  title="Remove contribution"
-                  className="h-7 w-7 text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => remove.mutate(c.id)}
+                    disabled={remove.isPending}
+                    title="Remove contribution"
+                    className="h-7 w-7 text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </li>
             );
           })}

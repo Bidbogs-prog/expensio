@@ -351,14 +351,18 @@ export type NewSavingsGoal = Omit<SavingsGoal, 'id' | 'created_at' | 'user_id'>
 export type NewSavingsContribution = Omit<SavingsContribution, 'id' | 'created_at' | 'user_id'>
 
 export const savingsApi = {
-  async listGoals(): Promise<SavingsGoal[]> {
+  // Personal goals (group_id IS NULL) or a group's shared goals (RLS grants
+  // reads to members).
+  async listGoals(groupId: string | null = null): Promise<SavingsGoal[]> {
     return withAuth(async (userId) => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('savings_goals')
         .select('*')
-        .eq('user_id', userId)
         .order('created_at', { ascending: true })
 
+      q = groupId ? q.eq('group_id', groupId) : q.eq('user_id', userId).is('group_id', null)
+
+      const { data, error } = await q
       if (error) throw new Error(`Failed to fetch savings goals: ${error.message}`)
       return data || []
     })
@@ -405,14 +409,16 @@ export const savingsApi = {
     })
   },
 
-  async listContributions(): Promise<SavingsContribution[]> {
+  async listContributions(groupId: string | null = null): Promise<SavingsContribution[]> {
     return withAuth(async (userId) => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('savings_contributions')
         .select('*')
-        .eq('user_id', userId)
         .order('date', { ascending: false })
 
+      q = groupId ? q.eq('group_id', groupId) : q.eq('user_id', userId).is('group_id', null)
+
+      const { data, error } = await q
       if (error) throw new Error(`Failed to fetch contributions: ${error.message}`)
       return data || []
     })
