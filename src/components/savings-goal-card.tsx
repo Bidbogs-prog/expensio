@@ -36,7 +36,7 @@ export function SavingsGoalCard({
 
   const contribute = () => {
     const value = Number(amount);
-    if (!/^\d+$/.test(amount) || value <= 0) return;
+    if (!/^\d+(\.\d{1,2})?$/.test(amount) || value <= 0) return;
     // Land the contribution inside the viewed month so it shows up immediately.
     const today = new Date().toISOString().slice(0, 10);
     add.mutate({
@@ -139,8 +139,8 @@ export function SavingsGoalCard({
       >
         <Input
           value={amount}
-          onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ""))}
-          inputMode="numeric"
+          onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
+          inputMode="decimal"
           placeholder={
             remainingThisMonth > 0
               ? `${Math.round(remainingThisMonth).toLocaleString()} to fund ${monthName}`

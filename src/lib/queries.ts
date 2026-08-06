@@ -12,11 +12,12 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { expensesApi, incomeApi, savingsApi, templatesApi, userSettingsApi } from "./api";
+import { categoryBudgetsApi, expensesApi, incomeApi, savingsApi, templatesApi, userSettingsApi } from "./api";
 import type { NewSavingsContribution, NewSavingsGoal } from "./api";
 import type { TxKind } from "@/lib/transaction-ui";
 import type {
   BudgetTemplate,
+  CategoryBudget,
   Currency,
   ExpenseFormValues,
   IncomeFormValues,
@@ -398,6 +399,60 @@ export function useDeleteSavingsContribution(groupId: string | null = null) {
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    },
+  });
+}
+
+/** Bulk-insert imported rows into the scoped ledger, then refresh it. */
+export function useImportTransactions(kind: TxKind, groupId: string | null = null) {
+  const qc = useQueryClient();
+  const key = txKey(kind, groupId);
+
+  return useMutation({
+    mutationFn: (rows: Array<Omit<Transaction, "id" | "created_at" | "user_id" | "group_id">>) =>
+      listApi(kind).createMany(rows.map((r) => ({ ...r, group_id: groupId ?? null }))),
+    onSuccess: (created) => {
+      qc.setQueryData<Transaction[]>(key, (old = []) => [...created, ...old]);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+// ── Per-category budget limits ────────────────────────────────────────────────
+const budgetsKey = (groupId?: string | null) =>
+  ["category-budgets", groupId ?? "personal"] as const;
+
+export function useCategoryBudgets(groupId: string | null = null) {
+  return useQuery({
+    queryKey: budgetsKey(groupId),
+    queryFn: (): Promise<CategoryBudget[]> => categoryBudgetsApi.list(groupId),
+  });
+}
+
+export function useSetCategoryBudget(groupId: string | null = null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { category: string; monthlyLimit: number }) =>
+      categoryBudgetsApi.set({ ...input, groupId }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: budgetsKey(groupId) }),
+  });
+}
+
+export function useDeleteCategoryBudget(groupId: string | null = null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => categoryBudgetsApi.remove(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: budgetsKey(groupId) });
+      const prev = qc.getQueryData<CategoryBudget[]>(budgetsKey(groupId)) ?? [];
+      qc.setQueryData<CategoryBudget[]>(
+        budgetsKey(groupId),
+        prev.filter((b) => b.id !== id)
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(budgetsKey(groupId), ctx.prev);
     },
   });
 }

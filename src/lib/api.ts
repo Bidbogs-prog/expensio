@@ -2,6 +2,7 @@
 import { supabase } from './supabase'
 import type {
   BudgetTemplate,
+  CategoryBudget,
   Expense,
   Income,
   SavingsContribution,
@@ -291,6 +292,65 @@ export const userSettingsApi = {
       return data
     })
   }
+}
+
+// Per-category monthly budget limits API
+export const categoryBudgetsApi = {
+  // Personal scope → the user's own budgets. Group scope → the group's shared budgets.
+  async list(groupId: string | null): Promise<CategoryBudget[]> {
+    return withAuth(async (userId) => {
+      let q = supabase.from('category_budgets').select('*').order('category')
+      q = groupId ? q.eq('group_id', groupId) : q.is('group_id', null).eq('user_id', userId)
+
+      const { data, error } = await q
+      if (error) throw new Error(`Failed to load budgets: ${error.message}`)
+      return (data ?? []) as CategoryBudget[]
+    })
+  },
+
+  // Create-or-update the limit for a category in a scope. Done as two steps
+  // because the scope's uniqueness lives in partial indexes that PostgREST
+  // upsert can't target.
+  async set(input: {
+    category: string
+    monthlyLimit: number
+    groupId: string | null
+  }): Promise<CategoryBudget> {
+    return withAuth(async (userId) => {
+      let existing = supabase
+        .from('category_budgets')
+        .select('id')
+        .eq('category', input.category)
+      existing = input.groupId
+        ? existing.eq('group_id', input.groupId)
+        : existing.is('group_id', null).eq('user_id', userId)
+      const { data: found, error: findError } = await existing.maybeSingle()
+      if (findError) throw new Error(`Failed to save budget: ${findError.message}`)
+
+      const query = found
+        ? supabase
+            .from('category_budgets')
+            .update({ monthly_limit: input.monthlyLimit })
+            .eq('id', found.id)
+        : supabase.from('category_budgets').insert({
+            user_id: userId,
+            group_id: input.groupId,
+            category: input.category,
+            monthly_limit: input.monthlyLimit,
+          })
+
+      const { data, error } = await query.select().single()
+      if (error) throw new Error(`Failed to save budget: ${error.message}`)
+      return data as CategoryBudget
+    })
+  },
+
+  async remove(id: string): Promise<void> {
+    return withAuth(async () => {
+      const { error } = await supabase.from('category_budgets').delete().eq('id', id)
+      if (error) throw new Error(`Failed to delete budget: ${error.message}`)
+    })
+  },
 }
 
 // Budget / category templates API

@@ -88,7 +88,7 @@ export function SavingsGoalForm({
                 <FormItem>
                   <FormLabel className="text-xs">Target ({currency}, optional)</FormLabel>
                   <FormControl>
-                    <Input inputMode="numeric" placeholder="10000" {...field} />
+                    <Input inputMode="decimal" placeholder="10000" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -101,7 +101,7 @@ export function SavingsGoalForm({
                 <FormItem>
                   <FormLabel className="text-xs">Per month (optional)</FormLabel>
                   <FormControl>
-                    <Input inputMode="numeric" placeholder="1500" {...field} />
+                    <Input inputMode="decimal" placeholder="1500" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

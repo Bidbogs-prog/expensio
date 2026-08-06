@@ -197,6 +197,8 @@ export function TransactionTable({
                     <TableCell>
                       <Input
                         type="number"
+                        step="0.01"
+                        inputMode="decimal"
                         value={editValues.amount}
                         onChange={(e) => setEditValues((p) => ({ ...p, amount: e.target.value }))}
                         className="h-8 text-right text-sm"

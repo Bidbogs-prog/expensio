@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { BudgetLimits } from "@/components/budget-limits";
+import { CsvControls } from "@/components/csv-controls";
 import { ScopeSwitcher } from "@/components/scope-switcher";
 import { TransactionForm } from "@/components/transaction-form";
 import { TransactionTable } from "@/components/transaction-table";
@@ -66,12 +68,16 @@ export function TransactionWorkspace({ kind }: { kind: TxKind }) {
         <TemplatesBar kind={kind} groupId={scope} />
       </Card>
 
+      {kind === "expense" && <BudgetLimits groupId={scope} />}
+
       <TransactionTable
         kind={kind}
         groupId={scope}
         members={memberMap}
         currentUserId={currentUserId}
       />
+
+      <CsvControls kind={kind} groupId={scope} />
     </div>
   );
 }

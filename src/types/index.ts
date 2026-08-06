@@ -67,6 +67,17 @@ export interface SavingsContribution {
   created_at?: string;
 }
 
+/** Monthly spending limit for one expense category (personal or group scope). */
+export interface CategoryBudget {
+  id: string;
+  user_id: string;
+  /** null = personal budget; a group id = shared family budget. */
+  group_id: string | null;
+  category: string;
+  monthly_limit: number;
+  created_at?: string;
+}
+
 export interface UserSettings {
   id?: number;
   user_id: string;

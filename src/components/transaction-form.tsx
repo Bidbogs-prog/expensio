@@ -304,6 +304,8 @@ export function TransactionForm({
                 <FormControl>
                   <Input
                     type="number"
+                    step="0.01"
+                    inputMode="decimal"
                     placeholder="0"
                     onWheel={(e) => e.currentTarget.blur()}
                     className="shadow-soft [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
