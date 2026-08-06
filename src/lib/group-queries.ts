@@ -56,6 +56,26 @@ export function useCreateGroup() {
   });
 }
 
+export function useSetGroupSettleUp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ groupId, enabled }: { groupId: string; enabled: boolean }) =>
+      groupsApi.setSettleUp(groupId, enabled),
+    onMutate: async ({ groupId, enabled }) => {
+      await qc.cancelQueries({ queryKey: groupKeys.list });
+      const prev = qc.getQueryData<Awaited<ReturnType<typeof groupsApi.list>>>(groupKeys.list);
+      qc.setQueryData<Awaited<ReturnType<typeof groupsApi.list>>>(groupKeys.list, (old = []) =>
+        old.map((g) => (g.id === groupId ? { ...g, settle_up: enabled } : g))
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(groupKeys.list, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: groupKeys.list }),
+  });
+}
+
 export function useInviteUser(groupId: string) {
   const qc = useQueryClient();
   return useMutation({

@@ -35,6 +35,10 @@ export interface BudgetTemplate {
   kind: "expense" | "income";
   name: string;
   items: TemplateItem[];
+  /** Auto-insert items on the 1st of each month (via pg_cron). */
+  auto_apply?: boolean;
+  /** 'YYYY-MM' the auto-run last applied; set on enable to skip the current month. */
+  last_applied?: string | null;
   created_at?: string;
 }
 
@@ -108,6 +112,8 @@ export interface Group {
   id: string;
   name: string;
   owner_id: string;
+  /** Track who-owes-whom for shared expenses. Off for pooled-money households. */
+  settle_up?: boolean;
   created_at?: string;
 }
 

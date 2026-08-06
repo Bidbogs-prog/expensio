@@ -10,12 +10,13 @@ import { MemberRoster } from "@/components/family/member-roster";
 import { InvitePeople } from "@/components/family/invite-people";
 import { SharedLedger } from "@/components/family/shared-ledger";
 import { MemberBreakdown } from "@/components/family/member-breakdown";
+import { SettleUp } from "@/components/family/settle-up";
 import { useAuthUser } from "@/lib/auth-context";
 import { useCurrency, useGroupTransactions, useSavingsContributions } from "@/lib/queries";
 import { useUiStore } from "@/hooks/use-ui-store";
 import { useRealtimeLedger } from "@/hooks/use-realtime-ledger";
 import { computeAnalytics } from "@/lib/insights";
-import { useGroups, useGroupMembers } from "@/lib/group-queries";
+import { useGroups, useGroupMembers, useSetGroupSettleUp } from "@/lib/group-queries";
 
 /**
  * Shared household overview for a single family group: combined stats, the
@@ -35,6 +36,7 @@ export function FamilyOverview({
 
   const { data: groups } = useGroups();
   const activeGroup = groups?.find((g) => g.id === groupId) ?? null;
+  const setSettleUp = useSetGroupSettleUp();
 
   const { data: members } = useGroupMembers(groupId);
   const memberIds = useMemo(() => (members ?? []).map((m) => m.user_id), [members]);
@@ -128,6 +130,31 @@ export function FamilyOverview({
 
         <div className="space-y-4">
           <MemberBreakdown monthExpenses={monthExpenses} memberMap={memberMap} currency={currency} />
+
+          {activeGroup?.settle_up ? (
+            <SettleUp
+              monthExpenses={monthExpenses}
+              memberMap={memberMap}
+              currency={currency}
+              onDisable={() => setSettleUp.mutate({ groupId, enabled: false })}
+            />
+          ) : (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-border/60 px-4 py-3">
+              <p className="text-xs text-muted-foreground">
+                Splitting costs? Turn on settle-up to see who owes whom. Households
+                that pool money can leave it off.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 shrink-0 text-xs"
+                onClick={() => setSettleUp.mutate({ groupId, enabled: true })}
+                disabled={setSettleUp.isPending}
+              >
+                Enable settle-up
+              </Button>
+            </div>
+          )}
 
           <Card className="p-5 shadow-soft">
             <div className="mb-3 flex items-center justify-between">

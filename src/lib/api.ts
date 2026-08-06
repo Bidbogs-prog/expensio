@@ -404,6 +404,24 @@ export const templatesApi = {
       if (error) throw new Error(`Failed to delete template: ${error.message}`)
     })
   },
+
+  // Enabling stamps last_applied with the current month so the cron job starts
+  // NEXT month — the user likely already entered this month's items manually.
+  async setAutoApply(id: string, autoApply: boolean): Promise<BudgetTemplate> {
+    return withAuth(async () => {
+      const patch = autoApply
+        ? { auto_apply: true, last_applied: new Date().toISOString().slice(0, 7) }
+        : { auto_apply: false }
+      const { data, error } = await supabase
+        .from('budget_templates')
+        .update(patch)
+        .eq('id', id)
+        .select()
+        .single()
+      if (error) throw new Error(`Failed to update template: ${error.message}`)
+      return data as BudgetTemplate
+    })
+  },
 }
 
 // Savings goals & contributions API (personal-only; savings are never expenses)
@@ -508,6 +526,15 @@ export const savingsApi = {
       if (error) throw new Error(`Failed to delete contribution: ${error.message}`)
     })
   },
+}
+
+/**
+ * Multiply every personal-scope amount by `rate` server-side (expenses, income,
+ * savings, budgets, template items). Group rows are untouched — they're shared.
+ */
+export async function convertPersonalAmounts(rate: number): Promise<void> {
+  const { error } = await supabase.rpc('convert_personal_amounts', { p_rate: rate })
+  if (error) throw new Error(`Failed to convert amounts: ${error.message}`)
 }
 
 // Utility function to check auth status without throwing

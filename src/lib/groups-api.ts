@@ -43,6 +43,15 @@ export const groupsApi = {
     }));
   },
 
+  // Any member may toggle; enforced by the RPC, not the owner-only RLS policy.
+  async setSettleUp(groupId: string, enabled: boolean): Promise<void> {
+    const { error } = await supabase.rpc("set_group_settle_up", {
+      p_group_id: groupId,
+      p_enabled: enabled,
+    });
+    if (error) throw new Error(error.message);
+  },
+
   async leave(groupId: string): Promise<void> {
     const uid = await getCurrentUserId();
     const { error } = await supabase

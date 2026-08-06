@@ -13,6 +13,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import {
+  BarChart3,
   LayoutDashboard,
   Loader2,
   LogOut,
@@ -38,6 +39,7 @@ const NAV_ITEMS = [
   { title: "Expenses", url: "/expenses", icon: TrendingDown },
   { title: "Income", url: "/income", icon: Wallet },
   { title: "Savings", url: "/savings", icon: PiggyBank },
+  { title: "Reports", url: "/reports", icon: BarChart3 },
 ];
 
 export function AppSidebar() {

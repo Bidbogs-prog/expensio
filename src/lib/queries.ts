@@ -228,6 +228,32 @@ export function useCreateTemplate(kind: TxKind, groupId: string | null = null) {
   });
 }
 
+export function useSetTemplateAutoApply(kind: TxKind, groupId: string | null = null) {
+  const qc = useQueryClient();
+  const key = templatesKey(kind, groupId);
+  return useMutation({
+    mutationFn: ({ id, autoApply }: { id: string; autoApply: boolean }) =>
+      templatesApi.setAutoApply(id, autoApply),
+    onMutate: async ({ id, autoApply }) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<BudgetTemplate[]>(key) ?? [];
+      qc.setQueryData<BudgetTemplate[]>(
+        key,
+        prev.map((t) => (t.id === id ? { ...t, auto_apply: autoApply } : t))
+      );
+      return { prev };
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData<BudgetTemplate[]>(key, (old = []) =>
+        old.map((t) => (t.id === updated.id ? updated : t))
+      );
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    },
+  });
+}
+
 export function useDeleteTemplate(kind: TxKind, groupId: string | null = null) {
   const qc = useQueryClient();
   return useMutation({

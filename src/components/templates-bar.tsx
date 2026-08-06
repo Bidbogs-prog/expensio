@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Layers, Loader2, Plus, Trash2, X, Zap } from "lucide-react";
+import { Check, Layers, Loader2, Plus, Repeat, Trash2, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   useApplyTemplate,
   useCreateTemplate,
   useDeleteTemplate,
+  useSetTemplateAutoApply,
   useTemplates,
 } from "@/lib/queries";
 import { useCurrentMonth } from "@/hooks/use-derived";
@@ -30,6 +31,7 @@ export function TemplatesBar({ kind, groupId }: { kind: TxKind; groupId: string 
   const { data: templates = [] } = useTemplates(kind, groupId);
   const apply = useApplyTemplate(kind, groupId);
   const del = useDeleteTemplate(kind, groupId);
+  const setAuto = useSetTemplateAutoApply(kind, groupId);
   const [showCreate, setShowCreate] = useState(false);
   const [justApplied, setJustApplied] = useState<string | null>(null);
 
@@ -105,6 +107,29 @@ export function TemplatesBar({ kind, groupId }: { kind: TxKind; groupId: string 
                 </button>
                 <button
                   type="button"
+                  onClick={() => setAuto.mutate({ id: t.id, autoApply: !t.auto_apply })}
+                  disabled={setAuto.isPending}
+                  aria-label={
+                    t.auto_apply
+                      ? `Stop auto-applying ${t.name}`
+                      : `Auto-apply ${t.name} every month`
+                  }
+                  title={
+                    t.auto_apply
+                      ? "Auto-applies on the 1st of each month — click to turn off"
+                      : "Turn on to auto-apply on the 1st of each month (starts next month)"
+                  }
+                  className={cn(
+                    "transition-colors",
+                    t.auto_apply
+                      ? "text-primary"
+                      : "text-muted-foreground/60 opacity-0 hover:text-primary group-hover:opacity-100"
+                  )}
+                >
+                  <Repeat className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => del.mutate(t.id)}
                   disabled={del.isPending}
                   aria-label={`Delete template ${t.name}`}
@@ -163,7 +188,7 @@ function TemplateDialog({
     setRows((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
 
   const items: TemplateItem[] = rows
-    .filter((r) => r.category.trim() && r.name.trim() && /^\d+$/.test(r.amount.trim()))
+    .filter((r) => r.category.trim() && r.name.trim() && /^\d+(\.\d{1,2})?$/.test(r.amount.trim()))
     .map((r) => ({
       category: cfg.normalizeCategory(r.category),
       name: r.name.trim(),
@@ -235,8 +260,8 @@ function TemplateDialog({
                 />
                 <Input
                   value={r.amount}
-                  onChange={(e) => setRow(i, { amount: e.target.value.replace(/[^\d]/g, "") })}
-                  inputMode="numeric"
+                  onChange={(e) => setRow(i, { amount: e.target.value.replace(/[^\d.]/g, "") })}
+                  inputMode="decimal"
                   placeholder="0"
                   className="h-9 w-24 text-right text-sm shadow-soft"
                 />

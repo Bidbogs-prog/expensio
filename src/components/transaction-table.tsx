@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Inbox, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { ArrowDownUp, Check, Inbox, Loader2, Pencil, Search, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,14 @@ interface EditValues {
 
 const EMPTY_EDIT: EditValues = { category: "", name: "", amount: "", date: "" };
 
+const SORTS = {
+  "date-desc": { label: "Newest first", fn: (a: Transaction, b: Transaction) => b.date.localeCompare(a.date) },
+  "date-asc": { label: "Oldest first", fn: (a: Transaction, b: Transaction) => a.date.localeCompare(b.date) },
+  "amount-desc": { label: "Highest amount", fn: (a: Transaction, b: Transaction) => Number(b.amount) - Number(a.amount) },
+  "amount-asc": { label: "Lowest amount", fn: (a: Transaction, b: Transaction) => Number(a.amount) - Number(b.amount) },
+} as const;
+type SortKey = keyof typeof SORTS;
+
 export function TransactionTable({
   kind,
   groupId = null,
@@ -66,10 +74,27 @@ export function TransactionTable({
   const source = isGroup ? group : personal;
   const isLoading = source.isLoading;
 
-  const items = useMemo(
+  const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [sort, setSort] = useState<SortKey>("date-desc");
+
+  const monthItems = useMemo(
     () => (source.data ?? []).filter((t) => t.date?.startsWith(month)),
     [source.data, month]
   );
+  const items = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return monthItems
+      .filter((t) => categoryFilter === "all" || t.category === categoryFilter)
+      .filter(
+        (t) =>
+          !q ||
+          t.name.toLowerCase().includes(q) ||
+          t.category.toLowerCase().includes(q)
+      )
+      .sort(SORTS[sort].fn);
+  }, [monthItems, query, categoryFilter, sort]);
+  const isFiltered = query.trim() !== "" || categoryFilter !== "all";
   const total = useMemo(() => items.reduce((s, t) => s + Number(t.amount), 0), [items]);
 
   const del = useDeleteTransaction(kind, groupId);
@@ -77,7 +102,7 @@ export function TransactionTable({
   const busy = isLoading || del.isPending || upd.isPending;
 
   const allCategories = [
-    ...new Set([...cfg.defaultCategories, ...items.map((i) => i.category)]),
+    ...new Set([...cfg.defaultCategories, ...monthItems.map((i) => i.category)]),
   ];
 
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -128,7 +153,7 @@ export function TransactionTable({
         </div>
       )}
 
-      {items.length === 0 && !isLoading ? (
+      {monthItems.length === 0 && !isLoading ? (
         <div className="px-6 py-12 text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Inbox className="h-6 w-6" />
@@ -141,6 +166,50 @@ export function TransactionTable({
           </p>
         </div>
       ) : (
+        <>
+        <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-4 py-3">
+          <div className="relative min-w-[10rem] flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={`Search ${kind === "expense" ? "expenses" : "income"}…`}
+              className="h-8 pl-8 text-sm"
+              aria-label="Search transactions"
+            />
+          </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="h-8 w-36 text-xs" aria-label="Filter by category">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {allCategories.map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {formatCategory(cat)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+            <SelectTrigger className="h-8 w-40 text-xs" aria-label="Sort order">
+              <ArrowDownUp className="mr-1 h-3 w-3 shrink-0 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(SORTS).map(([key, s]) => (
+                <SelectItem key={key} value={key}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {isFiltered && (
+            <span className="text-xs text-muted-foreground">
+              {items.length} of {monthItems.length}
+            </span>
+          )}
+        </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -265,9 +334,20 @@ export function TransactionTable({
                 )
               )}
 
+              {items.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={isGroup ? 6 : 5}
+                    className="py-8 text-center text-sm text-muted-foreground"
+                  >
+                    No matches — try a different search or category.
+                  </TableCell>
+                </TableRow>
+              )}
+
               <TableRow className="border-t-2 bg-muted/30 hover:bg-muted/30">
                 <TableCell colSpan={isGroup ? 4 : 3} className="font-display text-base font-bold">
-                  {cfg.totalLabel}
+                  {isFiltered ? `${cfg.totalLabel} (filtered)` : cfg.totalLabel}
                 </TableCell>
                 <TableCell className={cn("text-right font-mono text-base font-bold tabular", cfg.amountClass)}>
                   {total.toLocaleString()} {currency}
@@ -277,6 +357,7 @@ export function TransactionTable({
             </TableBody>
           </Table>
         </div>
+        </>
       )}
     </Card>
   );
