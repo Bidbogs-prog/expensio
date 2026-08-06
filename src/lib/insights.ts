@@ -171,6 +171,9 @@ export interface TrendPoint {
   label: string;
   expense: number;
   income: number;
+  /** Contributions moved into savings goals that month. */
+  savings: number;
+  /** income − expenses − savings contributions. */
   net: number;
 }
 
@@ -186,12 +189,14 @@ export function computeTrend(
   for (let i = 0; i < months; i++) {
     const expense = sum(inMonth(expenses, cur));
     const incomeT = sum(inMonth(income, cur));
+    const saved = savingsInMonth(contributions, cur);
     out.unshift({
       month: cur,
       label: shortMonth(cur),
       expense,
       income: incomeT,
-      net: incomeT - expense - savingsInMonth(contributions, cur),
+      savings: saved,
+      net: incomeT - expense - saved,
     });
     cur = prevMonthOf(cur);
   }

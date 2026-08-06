@@ -32,12 +32,25 @@ function TrendTooltip({
       <p className="mb-1.5 text-xs font-semibold">{label}</p>
       <div className="space-y-0.5 text-xs">
         <p className="flex items-center justify-between gap-4">
-          <span className="text-emerald-400">Income</span>
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="h-2 w-2 rounded-full" style={{ background: "hsl(var(--primary))" }} />
+            Income
+          </span>
           <span className="font-mono tabular">{d.income.toLocaleString()} {currency}</span>
         </p>
         <p className="flex items-center justify-between gap-4">
-          <span className="text-rose-400">Expenses</span>
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="h-2 w-2 rounded-full" style={{ background: "hsl(var(--chart-5))" }} />
+            Expenses
+          </span>
           <span className="font-mono tabular">{d.expense.toLocaleString()} {currency}</span>
+        </p>
+        <p className="flex items-center justify-between gap-4">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="h-2 w-2 rounded-full" style={{ background: "hsl(var(--chart-3))" }} />
+            Savings
+          </span>
+          <span className="font-mono tabular">{d.savings.toLocaleString()} {currency}</span>
         </p>
         <p className="flex items-center justify-between gap-4 border-t border-border pt-1">
           <span className="text-muted-foreground">Net</span>
@@ -85,7 +98,14 @@ export function TrendGraph({
         <Tooltip content={<TrendTooltip currency={currency} />} cursor={{ stroke: "hsl(var(--border))" }} />
         <Area type="monotone" dataKey="income" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#gIncome)" />
         <Area type="monotone" dataKey="expense" stroke="hsl(var(--chart-5))" strokeWidth={2} fill="url(#gExpense)" />
-        <Line type="monotone" dataKey="net" stroke="hsl(var(--chart-2))" strokeWidth={1.5} strokeDasharray="4 3" dot={false} />
+        <Line
+          type="monotone"
+          dataKey="savings"
+          stroke="hsl(var(--chart-3))"
+          strokeWidth={2}
+          dot={false}
+          activeDot={{ r: 4, strokeWidth: 0 }}
+        />
       </AreaChart>
     </ResponsiveContainer>
   );

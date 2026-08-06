@@ -17,6 +17,12 @@ const TrendGraph = dynamic(
   }
 );
 
+const LEGEND = [
+  { label: "Income", color: "hsl(var(--primary))" },
+  { label: "Expenses", color: "hsl(var(--chart-5))" },
+  { label: "Savings", color: "hsl(var(--chart-3))" },
+];
+
 export function SpendingTrend({ groupId = null }: { groupId?: string | null }) {
   const { data: expenses } = useScopedTransactions("expense", groupId);
   const { data: income } = useScopedTransactions("income", groupId);
@@ -42,6 +48,15 @@ export function SpendingTrend({ groupId = null }: { groupId?: string | null }) {
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">Last 6 months</p>
           </div>
+        </div>
+
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          {LEGEND.map((s) => (
+            <span key={s.label} className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
+              {s.label}
+            </span>
+          ))}
         </div>
       </div>
 
