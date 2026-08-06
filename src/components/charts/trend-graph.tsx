@@ -4,8 +4,8 @@
 
 import {
   Area,
-  AreaChart,
   CartesianGrid,
+  ComposedChart,
   Line,
   ResponsiveContainer,
   Tooltip,
@@ -70,7 +70,7 @@ export function TrendGraph({
 }) {
   return (
     <ResponsiveContainer width="99%" height={260}>
-      <AreaChart data={data} margin={{ top: 8, right: 6, left: -18, bottom: 0 }}>
+      <ComposedChart data={data} margin={{ top: 8, right: 6, left: -18, bottom: 0 }}>
         <defs>
           <linearGradient id="gExpense" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="hsl(var(--chart-5))" stopOpacity={0.5} />
@@ -106,7 +106,7 @@ export function TrendGraph({
           dot={false}
           activeDot={{ r: 4, strokeWidth: 0 }}
         />
-      </AreaChart>
+      </ComposedChart>
     </ResponsiveContainer>
   );
 }
