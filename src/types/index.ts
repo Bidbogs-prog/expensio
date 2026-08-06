@@ -78,10 +78,20 @@ export interface CategoryBudget {
   created_at?: string;
 }
 
+/** Per-kind category name lists, e.g. { expense: ["coffee"], income: [] }. */
+export interface CategoryPrefs {
+  expense?: string[];
+  income?: string[];
+}
+
 export interface UserSettings {
   id?: number;
   user_id: string;
   currency: Currency;
+  /** User-created categories that should appear even with no transactions. */
+  custom_categories?: CategoryPrefs;
+  /** Deleted/hidden categories (including hidden defaults). */
+  hidden_categories?: CategoryPrefs;
   created_at?: string;
   updated_at?: string;
 }

@@ -458,6 +458,45 @@ export function useDeleteCategoryBudget(groupId: string | null = null) {
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────────
+/**
+ * Persist the category lists for one kind (custom = user-created, hidden =
+ * deleted). Optimistic against the settings cache so the manage panel updates
+ * instantly.
+ */
+export function useUpdateCategoryPrefs(kind: TxKind) {
+  const qc = useQueryClient();
+
+  const merge = (old: UserSettings, input: { custom: string[]; hidden: string[] }) => ({
+    ...old,
+    custom_categories: { ...(old.custom_categories ?? {}), [kind]: input.custom },
+    hidden_categories: { ...(old.hidden_categories ?? {}), [kind]: input.hidden },
+  });
+
+  return useMutation({
+    mutationFn: (input: { custom: string[]; hidden: string[] }) => {
+      const cur = qc.getQueryData<UserSettings | null>(SETTINGS_KEY);
+      return userSettingsApi.upsert({
+        // Include currency so a first-time upsert still creates a valid row.
+        currency: cur?.currency ?? "MAD",
+        custom_categories: { ...(cur?.custom_categories ?? {}), [kind]: input.custom },
+        hidden_categories: { ...(cur?.hidden_categories ?? {}), [kind]: input.hidden },
+      });
+    },
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: SETTINGS_KEY });
+      const prev = qc.getQueryData<UserSettings | null>(SETTINGS_KEY);
+      qc.setQueryData<UserSettings | null>(SETTINGS_KEY, (old) =>
+        old ? merge(old, input) : old
+      );
+      return { prev };
+    },
+    onSuccess: (data) => qc.setQueryData(SETTINGS_KEY, data),
+    onError: (_e, _v, ctx) => {
+      if (ctx) qc.setQueryData(SETTINGS_KEY, ctx.prev);
+    },
+  });
+}
+
 export function useSetCurrency() {
   const qc = useQueryClient();
 

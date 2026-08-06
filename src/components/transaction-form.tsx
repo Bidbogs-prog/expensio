@@ -26,7 +26,9 @@ import {
   useAddTransaction,
   useGroupTransactions,
   useRenameCategory,
+  useSettings,
   useTransactions,
+  useUpdateCategoryPrefs,
 } from "@/lib/queries";
 import { expenseFormSchema, type ExpenseFormValues } from "@/form-schemas";
 import { TX_CONFIG, formatCategory, type TxKind } from "@/lib/transaction-ui";
@@ -54,15 +56,23 @@ export function TransactionForm({
 
   const [showCustom, setShowCustom] = useState(false);
   const [customCategory, setCustomCategory] = useState("");
-  const [addedCategories, setAddedCategories] = useState<string[]>([]);
   const [showManage, setShowManage] = useState(false);
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState("");
-  const [hiddenCategories, setHiddenCategories] = useState<string[]>([]);
+  // Category being deleted that still has transactions → pick a new home first.
+  const [reassignCat, setReassignCat] = useState<string | null>(null);
+  const [reassignTarget, setReassignTarget] = useState("");
 
+  // Custom + hidden lists persist in user_settings so edits survive reloads.
+  const { data: settings } = useSettings();
+  const prefs = useUpdateCategoryPrefs(kind);
+  const customCategories = settings?.custom_categories?.[kind] ?? [];
+  const hiddenCategories = settings?.hidden_categories?.[kind] ?? [];
+
+  const uniq = (a: string[]) => [...new Set(a)];
   const existingCategories = [...new Set(items.map((i) => i.category))];
   const allCategories = [
-    ...new Set([...cfg.defaultCategories, ...existingCategories, ...addedCategories]),
+    ...new Set([...cfg.defaultCategories, ...existingCategories, ...customCategories]),
   ].filter((c) => !hiddenCategories.includes(c));
 
   const getCategoryCount = (cat: string) =>
@@ -88,7 +98,11 @@ export function TransactionForm({
   const addCustom = () => {
     const normalized = cfg.normalizeCategory(customCategory);
     if (normalized) {
-      setAddedCategories((prev) => [...prev, normalized]);
+      prefs.mutate({
+        custom: uniq([...customCategories, normalized]),
+        // Re-adding a previously deleted category revives it.
+        hidden: hiddenCategories.filter((c) => c !== normalized),
+      });
       form.setValue("category", normalized, { shouldValidate: true });
       setCustomCategory("");
       setShowCustom(false);
@@ -103,27 +117,54 @@ export function TransactionForm({
   const saveEditCat = async () => {
     if (!editingCat || !editingCatName.trim()) return;
     const newName = cfg.normalizeCategory(editingCatName);
-    if (newName === editingCat) {
+    if (!newName || newName === editingCat) {
       setEditingCat(null);
       return;
     }
     if (getCategoryCount(editingCat) > 0) {
       await rename.mutateAsync({ oldName: editingCat, newName });
     }
-    setAddedCategories((prev) => prev.map((c) => (c === editingCat ? newName : c)));
+    prefs.mutate({
+      // Keep the new name visible even with no transactions; a renamed default
+      // hides its old name so it doesn't linger next to the new one.
+      custom: uniq([...customCategories.filter((c) => c !== editingCat), newName]),
+      hidden: uniq([
+        ...hiddenCategories.filter((c) => c !== newName),
+        ...(cfg.defaultCategories.includes(editingCat) ? [editingCat] : []),
+      ]),
+    });
     if (form.getValues("category") === editingCat) {
       form.setValue("category", newName, { shouldValidate: true });
     }
     setEditingCat(null);
   };
 
-  const deleteCat = (cat: string) => {
-    if (getCategoryCount(cat) > 0) return;
-    setAddedCategories((prev) => prev.filter((c) => c !== cat));
-    setHiddenCategories((prev) => [...prev, cat]);
+  /** Persistently remove a category from the pickable lists. */
+  const hideCategory = (cat: string) => {
+    prefs.mutate({
+      custom: customCategories.filter((c) => c !== cat),
+      hidden: uniq([...hiddenCategories, cat]),
+    });
     if (form.getValues("category") === cat) {
       form.setValue("category", "", { shouldValidate: true });
     }
+  };
+
+  const deleteCat = (cat: string) => {
+    if (getCategoryCount(cat) > 0) {
+      // Still in use — ask where its transactions should move first.
+      setReassignCat(cat);
+      setReassignTarget("");
+      return;
+    }
+    hideCategory(cat);
+  };
+
+  const confirmReassign = async () => {
+    if (!reassignCat || !reassignTarget) return;
+    await rename.mutateAsync({ oldName: reassignCat, newName: reassignTarget });
+    hideCategory(reassignCat);
+    setReassignCat(null);
   };
 
   return (
@@ -156,6 +197,52 @@ export function TransactionForm({
             {allCategories.map((cat) => {
               const count = getCategoryCount(cat);
               const isEditing = editingCat === cat;
+              if (reassignCat === cat) {
+                return (
+                  <div key={cat} className="flex flex-wrap items-center gap-2 rounded-md bg-muted/50 px-1 py-1">
+                    <span className={cn("h-2 w-2 shrink-0 rounded-full", cfg.dotClass)} />
+                    <span className="text-sm font-medium">{formatCategory(cat)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      move {count} item{count === 1 ? "" : "s"} to
+                    </span>
+                    <Select value={reassignTarget} onValueChange={setReassignTarget}>
+                      <SelectTrigger className="h-7 w-36 text-xs">
+                        <SelectValue placeholder="Category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allCategories
+                          .filter((c) => c !== cat)
+                          .map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {formatCategory(c)}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={confirmReassign}
+                      disabled={!reassignTarget || busy}
+                      className="h-7 w-7 p-0"
+                      title="Move items and delete category"
+                    >
+                      <Check className="h-3.5 w-3.5 text-emerald-600" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setReassignCat(null)}
+                      className="h-7 w-7 p-0"
+                      title="Cancel"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                );
+              }
               return (
                 <div key={cat} className="group flex items-center gap-2 rounded-md px-1 py-0.5">
                   <span className={cn("h-2 w-2 shrink-0 rounded-full", cfg.dotClass)} />
@@ -196,8 +283,12 @@ export function TransactionForm({
                         variant="ghost"
                         size="sm"
                         onClick={() => deleteCat(cat)}
-                        disabled={count > 0 || busy}
-                        title={count > 0 ? `${count} item(s) use this category` : "Remove category"}
+                        disabled={busy}
+                        title={
+                          count > 0
+                            ? `Delete — you'll pick where its ${count} item(s) move`
+                            : "Remove category"
+                        }
                         className="h-7 w-7 p-0 text-destructive opacity-0 transition-opacity group-hover:opacity-100 disabled:text-muted-foreground"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
