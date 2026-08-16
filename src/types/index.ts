@@ -14,10 +14,61 @@ export interface Transaction {
   date: string;
   /** null/undefined = personal; a group id = shared family transaction. */
   group_id?: string | null;
+  /** Account the money moved through; null = untracked. */
+  account_id?: string | null;
 }
 
 export interface Expense extends Transaction {}
 export interface Income extends Transaction {}
+
+// ── Accounts (where money lives) ─────────────────────────────────────────────
+export type AccountType = "checking" | "card" | "cash" | "other";
+
+/** A place money lives. Personal-only — accounts are never shared with groups. */
+export interface Account {
+  id: string;
+  user_id: string;
+  name: string;
+  type: AccountType;
+  /** Balance when the account was added; negative allowed (card debt). */
+  opening_balance: number;
+  /** SyncSource abstraction: 'manual' today; future import/BAM adapters later. */
+  sync_source: string;
+  archived: boolean;
+  /** Last time the user reconciled against the real-world balance. */
+  reconciled_at?: string | null;
+  created_at?: string;
+}
+
+/** Money moved between two of the user's own accounts (not income/expense). */
+export interface AccountTransfer {
+  id: string;
+  user_id: string;
+  from_account_id: string;
+  to_account_id: string;
+  amount: number;
+  date: string;
+  note?: string | null;
+  created_at?: string;
+}
+
+/** Signed reconciliation correction (positive = app under-counted). */
+export interface AccountAdjustment {
+  id: string;
+  user_id: string;
+  account_id: string;
+  amount: number;
+  date: string;
+  note?: string | null;
+  created_at?: string;
+}
+
+/** Minimal ledger row used to derive account balances (all scopes, all months). */
+export interface AccountLedgerEntry {
+  account_id: string;
+  amount: number;
+  kind: "expense" | "income";
+}
 
 // ── Budget / category templates ───────────────────────────────────────────────
 /** One fixed line item inside a template. */

@@ -1,6 +1,11 @@
 // src/lib/api.ts
 import { supabase } from './supabase'
 import type {
+  Account,
+  AccountAdjustment,
+  AccountLedgerEntry,
+  AccountTransfer,
+  AccountType,
   BudgetTemplate,
   CategoryBudget,
   Expense,
@@ -524,6 +529,176 @@ export const savingsApi = {
         .eq('user_id', userId)
 
       if (error) throw new Error(`Failed to delete contribution: ${error.message}`)
+    })
+  },
+}
+
+// Accounts API (personal-only; accounts are never shared with groups)
+export type NewAccount = {
+  name: string
+  type: AccountType
+  opening_balance: number
+}
+
+export const accountsApi = {
+  // All of the user's accounts, archived included (the UI separates them).
+  async list(): Promise<Account[]> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true })
+
+      if (error) throw new Error(`Failed to fetch accounts: ${error.message}`)
+      return data || []
+    })
+  },
+
+  async create(input: NewAccount): Promise<Account> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('accounts')
+        .insert([{ ...input, user_id: userId }])
+        .select()
+        .single()
+
+      if (error) throw new Error(`Failed to create account: ${error.message}`)
+      return data
+    })
+  },
+
+  async update(
+    id: string,
+    patch: Partial<NewAccount & { archived: boolean; reconciled_at: string }>
+  ): Promise<Account> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('accounts')
+        .update(patch)
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select()
+        .single()
+
+      if (error) throw new Error(`Failed to update account: ${error.message}`)
+      return data
+    })
+  },
+
+  // Cascades: transfers/adjustments die with the account; ledger rows keep
+  // living with account_id reset to NULL (on delete set null).
+  async remove(id: string): Promise<void> {
+    return withAuth(async (userId) => {
+      const { error } = await supabase
+        .from('accounts')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId)
+
+      if (error) throw new Error(`Failed to delete account: ${error.message}`)
+    })
+  },
+
+  // Every ledger row linked to ANY account, across scopes and months — the
+  // minimal projection balances are derived from. (Family rows you paid from
+  // your card still drain your card, so no group filter here.)
+  async listLedgerLinks(): Promise<AccountLedgerEntry[]> {
+    return withAuth(async (userId) => {
+      const [exp, inc] = await Promise.all([
+        supabase
+          .from('expenses')
+          .select('account_id, amount')
+          .eq('user_id', userId)
+          .not('account_id', 'is', null),
+        supabase
+          .from('income')
+          .select('account_id, amount')
+          .eq('user_id', userId)
+          .not('account_id', 'is', null),
+      ])
+      if (exp.error) throw new Error(`Failed to fetch account ledger: ${exp.error.message}`)
+      if (inc.error) throw new Error(`Failed to fetch account ledger: ${inc.error.message}`)
+
+      return [
+        ...(exp.data ?? []).map((r) => ({ ...r, kind: 'expense' as const })),
+        ...(inc.data ?? []).map((r) => ({ ...r, kind: 'income' as const })),
+      ] as AccountLedgerEntry[]
+    })
+  },
+}
+
+// Transfers between own accounts
+export type NewTransfer = Omit<AccountTransfer, 'id' | 'created_at' | 'user_id'>
+
+export const transfersApi = {
+  async list(): Promise<AccountTransfer[]> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('account_transfers')
+        .select('*')
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+
+      if (error) throw new Error(`Failed to fetch transfers: ${error.message}`)
+      return data || []
+    })
+  },
+
+  async create(input: NewTransfer): Promise<AccountTransfer> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('account_transfers')
+        .insert([{ ...input, user_id: userId }])
+        .select()
+        .single()
+
+      if (error) throw new Error(`Failed to create transfer: ${error.message}`)
+      return data
+    })
+  },
+
+  async remove(id: string): Promise<void> {
+    return withAuth(async (userId) => {
+      const { error } = await supabase
+        .from('account_transfers')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId)
+
+      if (error) throw new Error(`Failed to delete transfer: ${error.message}`)
+    })
+  },
+}
+
+// Reconciliation adjustments
+export type NewAdjustment = Omit<AccountAdjustment, 'id' | 'created_at' | 'user_id'>
+
+export const adjustmentsApi = {
+  async list(): Promise<AccountAdjustment[]> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('account_adjustments')
+        .select('*')
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+
+      if (error) throw new Error(`Failed to fetch adjustments: ${error.message}`)
+      return data || []
+    })
+  },
+
+  async create(input: NewAdjustment): Promise<AccountAdjustment> {
+    return withAuth(async (userId) => {
+      const { data, error } = await supabase
+        .from('account_adjustments')
+        .insert([{ ...input, user_id: userId }])
+        .select()
+        .single()
+
+      if (error) throw new Error(`Failed to create adjustment: ${error.message}`)
+      return data
     })
   },
 }

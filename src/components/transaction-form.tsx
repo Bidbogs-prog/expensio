@@ -23,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
+  useAccounts,
   useAddTransaction,
   useGroupTransactions,
   useRenameCategory,
@@ -32,8 +33,10 @@ import {
 } from "@/lib/queries";
 import { expenseFormSchema, type ExpenseFormValues } from "@/form-schemas";
 import { TX_CONFIG, formatCategory, type TxKind } from "@/lib/transaction-ui";
+import { ACCOUNT_TYPES } from "@/lib/accounts";
 
 const CUSTOM_VALUE = "__custom__";
+const NO_ACCOUNT = "__none__";
 
 export function TransactionForm({
   kind,
@@ -63,6 +66,10 @@ export function TransactionForm({
   const [reassignCat, setReassignCat] = useState<string | null>(null);
   const [reassignTarget, setReassignTarget] = useState("");
 
+  // Accounts are personal, but a family row still names YOUR paying account.
+  const { data: accounts } = useAccounts();
+  const activeAccounts = (accounts ?? []).filter((a) => !a.archived);
+
   // Custom + hidden lists persist in user_settings so edits survive reloads.
   const { data: settings } = useSettings();
   const prefs = useUpdateCategoryPrefs(kind);
@@ -85,6 +92,7 @@ export function TransactionForm({
       name: "",
       amount: "",
       date: new Date().toISOString().split("T")[0],
+      account: "",
     } as ExpenseFormValues,
   });
 
@@ -421,6 +429,42 @@ export function TransactionForm({
               </FormItem>
             )}
           />
+
+          {activeAccounts.length > 0 && (
+            <FormField
+              control={form.control}
+              name="account"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Account</FormLabel>
+                  <Select
+                    onValueChange={(val) => field.onChange(val === NO_ACCOUNT ? "" : val)}
+                    value={field.value || ""}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="shadow-soft">
+                        <SelectValue placeholder="No account" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value={NO_ACCOUNT}>
+                        <span className="text-muted-foreground">No account</span>
+                      </SelectItem>
+                      {activeAccounts.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                          <span className="ml-1.5 text-xs text-muted-foreground">
+                            {ACCOUNT_TYPES[a.type].label}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
 
         <div className="flex justify-end">

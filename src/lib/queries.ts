@@ -12,10 +12,14 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { categoryBudgetsApi, expensesApi, incomeApi, savingsApi, templatesApi, userSettingsApi } from "./api";
-import type { NewSavingsContribution, NewSavingsGoal } from "./api";
+import { accountsApi, adjustmentsApi, categoryBudgetsApi, expensesApi, incomeApi, savingsApi, templatesApi, transfersApi, userSettingsApi } from "./api";
+import type { NewAccount, NewSavingsContribution, NewSavingsGoal, NewTransfer } from "./api";
 import type { TxKind } from "@/lib/transaction-ui";
 import type {
+  Account,
+  AccountAdjustment,
+  AccountLedgerEntry,
+  AccountTransfer,
   BudgetTemplate,
   CategoryBudget,
   Currency,
@@ -50,6 +54,7 @@ function toPayload(values: FormValues, groupId?: string | null) {
     amount: Number(values.amount),
     date: values.date,
     group_id: groupId ?? null,
+    account_id: values.account || null,
   };
 }
 
@@ -122,6 +127,7 @@ export function useAddTransaction(kind: TxKind, groupId: string | null = null) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(key, ctx.prev);
     },
+    onSettled: () => qc.invalidateQueries({ queryKey: ACCOUNT_LEDGER_KEY }),
   });
 }
 
@@ -142,7 +148,12 @@ export function useUpdateTransaction(kind: TxKind, groupId: string | null = null
       const prev = qc.getQueryData<Transaction[]>(key) ?? [];
       qc.setQueryData<Transaction[]>(
         key,
-        prev.map((t) => (t.id === id ? { ...t, ...toPayload(values, t.group_id) } : t))
+        // The edit form doesn't touch accounts, so keep the row's link.
+        prev.map((t) =>
+          t.id === id
+            ? { ...t, ...toPayload(values, t.group_id), account_id: t.account_id ?? null }
+            : t
+        )
       );
       return { prev };
     },
@@ -172,6 +183,7 @@ export function useDeleteTransaction(kind: TxKind, groupId: string | null = null
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(key, ctx.prev);
     },
+    onSettled: () => qc.invalidateQueries({ queryKey: ACCOUNT_LEDGER_KEY }),
   });
 }
 
@@ -480,6 +492,153 @@ export function useDeleteCategoryBudget(groupId: string | null = null) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(budgetsKey(groupId), ctx.prev);
     },
+  });
+}
+
+// ── Accounts, transfers & reconciliation ─────────────────────────────────────
+const ACCOUNTS_KEY = ["accounts"] as const;
+const TRANSFERS_KEY = ["account-transfers"] as const;
+const ADJUSTMENTS_KEY = ["account-adjustments"] as const;
+/** Ledger rows linked to accounts; invalidated by every transaction mutation. */
+const ACCOUNT_LEDGER_KEY = ["account-ledger"] as const;
+
+export function useAccounts() {
+  return useQuery({
+    queryKey: ACCOUNTS_KEY,
+    queryFn: (): Promise<Account[]> => accountsApi.list(),
+  });
+}
+
+export function useAccountLedger() {
+  return useQuery({
+    queryKey: ACCOUNT_LEDGER_KEY,
+    queryFn: (): Promise<AccountLedgerEntry[]> => accountsApi.listLedgerLinks(),
+  });
+}
+
+export function useTransfers() {
+  return useQuery({
+    queryKey: TRANSFERS_KEY,
+    queryFn: (): Promise<AccountTransfer[]> => transfersApi.list(),
+  });
+}
+
+export function useAccountAdjustments() {
+  return useQuery({
+    queryKey: ADJUSTMENTS_KEY,
+    queryFn: (): Promise<AccountAdjustment[]> => adjustmentsApi.list(),
+  });
+}
+
+export function useCreateAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: NewAccount) => accountsApi.create(input),
+    onSuccess: (created) => {
+      qc.setQueryData<Account[]>(ACCOUNTS_KEY, (old = []) => [...old, created]);
+    },
+  });
+}
+
+export function useUpdateAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Partial<NewAccount & { archived: boolean }> }) =>
+      accountsApi.update(id, patch),
+    onMutate: async ({ id, patch }) => {
+      await qc.cancelQueries({ queryKey: ACCOUNTS_KEY });
+      const prev = qc.getQueryData<Account[]>(ACCOUNTS_KEY) ?? [];
+      qc.setQueryData<Account[]>(
+        ACCOUNTS_KEY,
+        prev.map((a) => (a.id === id ? { ...a, ...patch } : a))
+      );
+      return { prev };
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData<Account[]>(ACCOUNTS_KEY, (old = []) =>
+        old.map((a) => (a.id === updated.id ? updated : a))
+      );
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(ACCOUNTS_KEY, ctx.prev);
+    },
+  });
+}
+
+/** Deletes an account; its transfers/adjustments cascade, ledger links go NULL. */
+export function useDeleteAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => accountsApi.remove(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ACCOUNTS_KEY });
+      const prev = qc.getQueryData<Account[]>(ACCOUNTS_KEY) ?? [];
+      qc.setQueryData<Account[]>(ACCOUNTS_KEY, prev.filter((a) => a.id !== id));
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(ACCOUNTS_KEY, ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: TRANSFERS_KEY });
+      qc.invalidateQueries({ queryKey: ADJUSTMENTS_KEY });
+      qc.invalidateQueries({ queryKey: ACCOUNT_LEDGER_KEY });
+    },
+  });
+}
+
+export function useCreateTransfer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: NewTransfer) => transfersApi.create(input),
+    onSuccess: (created) => {
+      qc.setQueryData<AccountTransfer[]>(TRANSFERS_KEY, (old = []) => [created, ...old]);
+    },
+  });
+}
+
+export function useDeleteTransfer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => transfersApi.remove(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: TRANSFERS_KEY });
+      const prev = qc.getQueryData<AccountTransfer[]>(TRANSFERS_KEY) ?? [];
+      qc.setQueryData<AccountTransfer[]>(TRANSFERS_KEY, prev.filter((t) => t.id !== id));
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(TRANSFERS_KEY, ctx.prev);
+    },
+  });
+}
+
+/**
+ * Reconcile an account against its real-world balance: writes a signed
+ * adjustment for the difference (when there is one) and stamps reconciled_at.
+ */
+export function useReconcileAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId, delta }: { accountId: string; delta: number }) => {
+      if (delta !== 0) {
+        await adjustmentsApi.create({
+          account_id: accountId,
+          amount: delta,
+          date: new Date().toISOString().split("T")[0],
+          note: "Reconciliation",
+        });
+      }
+      return accountsApi.update(accountId, {
+        reconciled_at: new Date().toISOString(),
+      });
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData<Account[]>(ACCOUNTS_KEY, (old = []) =>
+        old.map((a) => (a.id === updated.id ? updated : a))
+      );
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ADJUSTMENTS_KEY }),
   });
 }
 

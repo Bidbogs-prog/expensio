@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   BarChart3,
+  Landmark,
   LayoutDashboard,
   Loader2,
   LogOut,
@@ -38,6 +39,7 @@ const NAV_ITEMS = [
   { title: "Insights", url: "/insights", icon: Sparkles, badge: "AI" },
   { title: "Expenses", url: "/expenses", icon: TrendingDown },
   { title: "Income", url: "/income", icon: Wallet },
+  { title: "Accounts", url: "/accounts", icon: Landmark },
   { title: "Savings", url: "/savings", icon: PiggyBank },
   { title: "Reports", url: "/reports", icon: BarChart3 },
 ];

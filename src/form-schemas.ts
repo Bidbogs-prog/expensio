@@ -16,6 +16,8 @@ export const incomeFormSchema = z.object({
     const parsedDate = Date.parse(val);
     return !isNaN(parsedDate);
   }, "Must be a valid date"),
+  /** Account id the money moved through; empty/undefined = untracked. */
+  account: z.string().optional(),
 });
 
 export const expenseFormSchema = z.object({
@@ -34,6 +36,8 @@ export const expenseFormSchema = z.object({
     const parsedDate = Date.parse(val);
     return !isNaN(parsedDate);
   }, "Must be a valid date"),
+  /** Account id the money moved through; empty/undefined = untracked. */
+  account: z.string().optional(),
 });
 
 export const savingsGoalFormSchema = z.object({
@@ -46,6 +50,19 @@ export const savingsGoalFormSchema = z.object({
   allocation: z.string().regex(/^(\d+(\.\d{1,2})?)?$/, "Must be a valid amount"),
 });
 
+export const accountFormSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Account name is required")
+    .max(40, "Account name must be less than 40 characters"),
+  type: z.enum(["checking", "card", "cash", "other"]),
+  // Optional signed amount — cards can start in the red; empty = 0.
+  opening: z
+    .string()
+    .regex(/^-?(\d+(\.\d{1,2})?)?$/, "Must be a valid amount"),
+});
+
 export type IncomeFormValues = z.infer<typeof incomeFormSchema>;
 export type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
 export type SavingsGoalFormValues = z.infer<typeof savingsGoalFormSchema>;
+export type AccountFormValues = z.infer<typeof accountFormSchema>;
