@@ -19,7 +19,6 @@ import {
   Loader2,
   LogOut,
   PiggyBank,
-  Sparkles,
   TrendingDown,
   Wallet,
 } from "lucide-react";
@@ -36,7 +35,6 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Insights", url: "/insights", icon: Sparkles, badge: "AI" },
   { title: "Expenses", url: "/expenses", icon: TrendingDown },
   { title: "Income", url: "/income", icon: Wallet },
   { title: "Accounts", url: "/accounts", icon: Landmark },
@@ -112,11 +110,6 @@ export function AppSidebar() {
                         <span className={isActive ? "font-medium" : undefined}>
                           {item.title}
                         </span>
-                        {item.badge ? (
-                          <span className="ml-auto rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-primary">
-                            {item.badge}
-                          </span>
-                        ) : null}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

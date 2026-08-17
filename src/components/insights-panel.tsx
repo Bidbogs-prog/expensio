@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
-  ArrowUpRight,
   CheckCircle2,
+  ChevronDown,
   Info,
   Lightbulb,
   OctagonAlert,
@@ -106,7 +106,11 @@ export function InsightsPanel({
     [expenses, income, currentMonth, currency, contributions]
   );
 
-  const shown = variant === "compact" ? insights.slice(0, 3) : insights;
+  // Compact starts at the top 3 and expands in place (there is no full page).
+  const [expanded, setExpanded] = useState(false);
+  const collapsed = variant === "compact" && !expanded;
+  const shown = collapsed ? insights.slice(0, 3) : insights;
+  const hiddenCount = insights.length - shown.length;
 
   return (
     <Card className={cn("relative overflow-hidden p-5 shadow-soft", className)}>
@@ -131,12 +135,17 @@ export function InsightsPanel({
             </p>
           </div>
         </div>
-        {variant === "compact" && (
-          <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground">
-            <a href="/insights">
-              View all
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </a>
+        {variant === "compact" && (insights.length > 3 || expanded) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            {collapsed ? `View all (${hiddenCount} more)` : "Show less"}
+            <ChevronDown
+              className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")}
+            />
           </Button>
         )}
       </div>
