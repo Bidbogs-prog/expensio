@@ -22,10 +22,14 @@ import type { TxKind } from "@/lib/transaction-ui";
  */
 export function TransactionWorkspace({ kind }: { kind: TxKind }) {
   const currentUserId = useAuthUser()?.id ?? null;
-  const { data: groups = [] } = useGroups();
+  const { data: allGroups = [] } = useGroups();
+  // Housemate groups share expenses only — they never appear as an income scope.
+  const groups =
+    kind === "income" ? allGroups.filter((g) => g.type !== "housemates") : allGroups;
   const [scope, setScope] = useState<string | null>(null); // null = personal
 
-  // Keep the scope valid if the user's groups change (e.g. leaves a group).
+  // Keep the scope valid if the user's groups change (e.g. leaves a group)
+  // or the selected group isn't eligible for this kind.
   useEffect(() => {
     if (scope && !groups.some((g) => g.id === scope)) setScope(null);
   }, [groups, scope]);

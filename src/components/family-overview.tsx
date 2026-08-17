@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Loader2, TrendingDown, TrendingUp, Users, Wallet } from "lucide-react";
+import { Check, Loader2, Pencil, TrendingDown, TrendingUp, Users, Wallet, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { StatCard } from "@/components/stat-card";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,13 @@ import { useCurrency, useGroupTransactions, useSavingsContributions } from "@/li
 import { useUiStore } from "@/hooks/use-ui-store";
 import { useRealtimeLedger } from "@/hooks/use-realtime-ledger";
 import { computeAnalytics } from "@/lib/insights";
-import { useGroups, useGroupMembers, useSetGroupSettleUp } from "@/lib/group-queries";
+import { cn } from "@/lib/utils";
+import {
+  useGroups,
+  useGroupMembers,
+  useRenameGroup,
+  useSetGroupSettleUp,
+} from "@/lib/group-queries";
 
 /**
  * Shared household overview for a single family group: combined stats, the
@@ -37,6 +44,21 @@ export function FamilyOverview({
   const { data: groups } = useGroups();
   const activeGroup = groups?.find((g) => g.id === groupId) ?? null;
   const setSettleUp = useSetGroupSettleUp();
+  const rename = useRenameGroup();
+
+  // Housemates share expenses only; income never enters the group.
+  const isHousemates = activeGroup?.type === "housemates";
+  const isOwner = activeGroup?.owner_id === currentUserId;
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+
+  const saveName = () => {
+    const trimmed = nameDraft.trim();
+    if (trimmed && trimmed !== activeGroup?.name) {
+      rename.mutate({ groupId, name: trimmed });
+    }
+    setEditingName(false);
+  };
 
   const { data: members } = useGroupMembers(groupId);
   const memberIds = useMemo(() => (members ?? []).map((m) => m.user_id), [members]);
@@ -80,34 +102,53 @@ export function FamilyOverview({
             Add shared expense
           </Link>
         </Button>
-        <Button asChild variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground">
-          <Link href="/income">
-            <TrendingUp className="h-4 w-4" />
-            Add shared income
-          </Link>
-        </Button>
+        {!isHousemates && (
+          <Button asChild variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground">
+            <Link href="/income">
+              <TrendingUp className="h-4 w-4" />
+              Add shared income
+            </Link>
+          </Button>
+        )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      {/* Stats — housemates track shared spending only, no income or balance. */}
+      <div className={cn("grid grid-cols-2 gap-3 sm:gap-4", !isHousemates && "lg:grid-cols-4")}>
+        {!isHousemates && (
+          <>
+            <StatCard
+              label="Net balance"
+              value={fmt(analytics.balance)}
+              unit={currency}
+              icon={Wallet}
+              tone={analytics.balance < 0 ? "negative" : "positive"}
+              featured
+              beam
+            />
+            <StatCard label="Income" value={fmt(analytics.incomeTotal)} unit={currency} icon={TrendingUp} tone="positive" />
+          </>
+        )}
         <StatCard
-          label="Net balance"
-          value={fmt(analytics.balance)}
+          label={isHousemates ? "Shared expenses" : "Expenses"}
+          value={fmt(analytics.expenseTotal)}
           unit={currency}
-          icon={Wallet}
-          tone={analytics.balance < 0 ? "negative" : "positive"}
-          featured
-          beam
+          icon={TrendingDown}
+          tone="negative"
+          featured={isHousemates}
+          beam={isHousemates}
         />
-        <StatCard label="Income" value={fmt(analytics.incomeTotal)} unit={currency} icon={TrendingUp} tone="positive" />
-        <StatCard label="Expenses" value={fmt(analytics.expenseTotal)} unit={currency} icon={TrendingDown} tone="negative" />
         <StatCard
           label="Members"
           value={String(members?.length ?? 0)}
           icon={Users}
           tone="accent"
           featured
-          hint={<span className="text-xs text-muted-foreground">{activeGroup?.name}</span>}
+          hint={
+            <span className="text-xs text-muted-foreground">
+              {activeGroup?.name}
+              {isHousemates && " · housemates"}
+            </span>
+          }
         />
       </div>
 
@@ -124,6 +165,9 @@ export function FamilyOverview({
               monthIncome={monthIncome}
               memberMap={memberMap}
               currency={currency}
+              groupId={groupId}
+              housemates={isHousemates}
+              currentUserId={currentUserId}
             />
           )}
         </div>
@@ -157,13 +201,49 @@ export function FamilyOverview({
           )}
 
           <Card className="p-5 shadow-soft">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-display text-base font-bold tracking-tight">
-                Members
-                <span className="ml-1.5 text-sm font-normal text-muted-foreground">
-                  {members?.length ?? 0}
-                </span>
-              </h2>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              {editingName ? (
+                <div className="flex flex-1 items-center gap-1.5">
+                  <Input
+                    value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveName();
+                      if (e.key === "Escape") setEditingName(false);
+                    }}
+                    maxLength={40}
+                    className="h-8 text-sm"
+                    autoFocus
+                  />
+                  <Button size="icon" onClick={saveName} disabled={rename.isPending} className="h-8 w-8 shrink-0">
+                    <Check className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="icon" variant="outline" onClick={() => setEditingName(false)} className="h-8 w-8 shrink-0">
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <h2 className="flex min-w-0 items-center gap-1.5 font-display text-base font-bold tracking-tight">
+                  <span className="truncate">{activeGroup?.name ?? "Members"}</span>
+                  <span className="shrink-0 text-sm font-normal text-muted-foreground">
+                    · {members?.length ?? 0} member{(members?.length ?? 0) === 1 ? "" : "s"}
+                  </span>
+                  {isOwner && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setNameDraft(activeGroup?.name ?? "");
+                        setEditingName(true);
+                      }}
+                      className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+                      title="Rename group"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  )}
+                </h2>
+              )}
             </div>
 
             {activeGroup && members ? (

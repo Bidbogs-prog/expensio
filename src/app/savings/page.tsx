@@ -26,7 +26,9 @@ export default function SavingsPage() {
   const month = useCurrentMonth();
   const currentUserId = useAuthUser()?.id ?? null;
 
-  const { data: groups = [] } = useGroups();
+  const { data: allGroups = [] } = useGroups();
+  // Housemate groups feature expenses only — no shared savings goals.
+  const groups = allGroups.filter((g) => g.type !== "housemates");
   const [scope, setScope] = useState<string | null>(null); // null = personal
 
   // Keep the scope valid if the user's groups change (e.g. leaves a group).

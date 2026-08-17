@@ -166,13 +166,25 @@ export interface Profile {
   avatar_url: string | null;
 }
 
+/** 'family' shares expenses AND income; 'housemates' shares expenses only. */
+export type GroupType = "family" | "housemates";
+
 export interface Group {
   id: string;
   name: string;
   owner_id: string;
+  /** Defaults to 'family' for groups created before types existed. */
+  type?: GroupType;
   /** Track who-owes-whom for shared expenses. Off for pooled-money households. */
   settle_up?: boolean;
   created_at?: string;
+}
+
+/** A housemate's "I sent my share" check-off on a shared expense. */
+export interface ExpenseContribution {
+  expense_id: number;
+  user_id: string;
+  confirmed_at?: string;
 }
 
 export interface GroupMember {

@@ -22,6 +22,7 @@ export function useRealtimeLedger(enabled: boolean) {
       timer.current = setTimeout(() => {
         qc.invalidateQueries({ queryKey: ["group-tx"] });
         qc.invalidateQueries({ queryKey: ["group-savings"] });
+        qc.invalidateQueries({ queryKey: ["expense-contributions"] });
       }, 300);
     };
 
@@ -31,6 +32,7 @@ export function useRealtimeLedger(enabled: boolean) {
       .on("postgres_changes", { event: "*", schema: "public", table: "income" }, invalidateSoon)
       .on("postgres_changes", { event: "*", schema: "public", table: "savings_goals" }, invalidateSoon)
       .on("postgres_changes", { event: "*", schema: "public", table: "savings_contributions" }, invalidateSoon)
+      .on("postgres_changes", { event: "*", schema: "public", table: "expense_contributions" }, invalidateSoon)
       .subscribe();
 
     return () => {

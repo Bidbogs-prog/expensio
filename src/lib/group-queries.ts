@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { groupsApi, invitesApi, profilesApi } from "./groups-api";
+import { contributionsApi, groupsApi, invitesApi, profilesApi } from "./groups-api";
+import type { ExpenseContribution, Group, GroupType } from "@/types";
 
 export const groupKeys = {
   list: ["groups"] as const,
@@ -10,6 +11,7 @@ export const groupKeys = {
   incoming: ["incoming-invites"] as const,
   pending: (id: string) => ["group-pending", id] as const,
   search: (q: string) => ["search-users", q] as const,
+  contributions: (id: string) => ["expense-contributions", id] as const,
 };
 
 // ── Queries ──────────────────────────────────────────────────────────────────
@@ -51,8 +53,63 @@ export function useUserSearch(query: string) {
 export function useCreateGroup() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) => groupsApi.create(name),
+    mutationFn: ({ name, type }: { name: string; type: GroupType }) =>
+      groupsApi.create(name, type),
     onSuccess: () => qc.invalidateQueries({ queryKey: groupKeys.list }),
+  });
+}
+
+export function useRenameGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ groupId, name }: { groupId: string; name: string }) =>
+      groupsApi.rename(groupId, name),
+    onMutate: async ({ groupId, name }) => {
+      await qc.cancelQueries({ queryKey: groupKeys.list });
+      const prev = qc.getQueryData<Group[]>(groupKeys.list);
+      qc.setQueryData<Group[]>(groupKeys.list, (old = []) =>
+        old.map((g) => (g.id === groupId ? { ...g, name } : g))
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(groupKeys.list, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: groupKeys.list }),
+  });
+}
+
+// ── Housemate contribution check-offs ────────────────────────────────────────
+export function useExpenseContributions(groupId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: groupKeys.contributions(groupId ?? "none"),
+    queryFn: () => contributionsApi.listForGroup(groupId as string),
+    enabled: !!groupId && enabled,
+  });
+}
+
+/** Toggle the caller's "I sent my share" mark on one shared expense. */
+export function useToggleContribution(groupId: string, currentUserId: string | null) {
+  const qc = useQueryClient();
+  const key = groupKeys.contributions(groupId);
+  return useMutation({
+    mutationFn: ({ expenseId, confirmed }: { expenseId: number; confirmed: boolean }) =>
+      confirmed ? contributionsApi.confirm(expenseId) : contributionsApi.retract(expenseId),
+    onMutate: async ({ expenseId, confirmed }) => {
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<ExpenseContribution[]>(key) ?? [];
+      qc.setQueryData<ExpenseContribution[]>(
+        key,
+        confirmed
+          ? [...prev, { expense_id: expenseId, user_id: currentUserId ?? "" }]
+          : prev.filter((c) => !(c.expense_id === expenseId && c.user_id === currentUserId))
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
   });
 }
 

@@ -1,10 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Users, X } from "lucide-react";
+import { Heart, Home, Loader2, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { useCreateGroup } from "@/lib/group-queries";
+import type { GroupType } from "@/types";
+
+const GROUP_TYPES: Array<{
+  value: GroupType;
+  label: string;
+  hint: string;
+  icon: typeof Heart;
+}> = [
+  {
+    value: "family",
+    label: "Family / Couple",
+    hint: "Share expenses and income — one household budget",
+    icon: Heart,
+  },
+  {
+    value: "housemates",
+    label: "Housemates",
+    hint: "Expenses only — split bills, check off who sent their share",
+    icon: Home,
+  },
+];
 
 export function CreateGroupDialog({
   open,
@@ -16,11 +38,13 @@ export function CreateGroupDialog({
   onCreated?: (groupId: string) => void;
 }) {
   const [name, setName] = useState("");
+  const [type, setType] = useState<GroupType>("family");
   const create = useCreateGroup();
 
   useEffect(() => {
     if (!open) return;
     setName("");
+    setType("family");
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -35,7 +59,7 @@ export function CreateGroupDialog({
   const submit = async () => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const group = await create.mutateAsync(trimmed);
+    const group = await create.mutateAsync({ name: trimmed, type });
     onCreated?.(group.id);
     onClose();
   };
@@ -80,6 +104,39 @@ export function CreateGroupDialog({
             autoFocus
             maxLength={40}
           />
+
+          <label className="mb-1.5 mt-4 block text-sm font-medium">Group type</label>
+          <div className="grid grid-cols-1 gap-2">
+            {GROUP_TYPES.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => setType(t.value)}
+                className={cn(
+                  "flex items-start gap-3 rounded-xl border p-3 text-left transition-colors",
+                  type === t.value
+                    ? "border-primary/60 bg-primary/5 ring-1 ring-primary/30"
+                    : "border-border hover:bg-muted/40"
+                )}
+              >
+                <span
+                  className={cn(
+                    "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                    type === t.value
+                      ? "bg-primary/15 text-primary"
+                      : "bg-secondary text-muted-foreground"
+                  )}
+                >
+                  <t.icon className="h-4 w-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">{t.label}</span>
+                  <span className="block text-xs text-muted-foreground">{t.hint}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+
           <div className="mt-5 grid grid-cols-2 gap-2">
             <Button variant="outline" onClick={onClose}>
               Cancel

@@ -4,8 +4,10 @@
 import { supabase } from "./supabase";
 import { getCurrentUserId } from "./api";
 import type {
+  ExpenseContribution,
   Group,
   GroupMember,
+  GroupType,
   IncomingInvite,
   PendingInvite,
   Profile,
@@ -22,8 +24,23 @@ export const groupsApi = {
     return data ?? [];
   },
 
-  async create(name: string): Promise<Group> {
-    const { data, error } = await supabase.rpc("create_group", { p_name: name });
+  async create(name: string, type: GroupType = "family"): Promise<Group> {
+    const { data, error } = await supabase.rpc("create_group", {
+      p_name: name,
+      p_type: type,
+    });
+    if (error) throw new Error(error.message);
+    return data as Group;
+  },
+
+  // Owner-only under RLS ("owner updates group", 0001).
+  async rename(groupId: string, name: string): Promise<Group> {
+    const { data, error } = await supabase
+      .from("groups")
+      .update({ name: name.trim() })
+      .eq("id", groupId)
+      .select()
+      .single();
     if (error) throw new Error(error.message);
     return data as Group;
   },
@@ -68,6 +85,41 @@ export const groupsApi = {
       .delete()
       .eq("group_id", groupId)
       .eq("user_id", userId);
+    if (error) throw new Error(error.message);
+  },
+};
+
+// Housemate "I sent my share" check-offs on shared expenses.
+export const contributionsApi = {
+  /** All check-offs for a group's expenses (any month; small table). */
+  async listForGroup(groupId: string): Promise<ExpenseContribution[]> {
+    const { data, error } = await supabase
+      .from("expense_contributions")
+      .select("expense_id, user_id, confirmed_at, expense:expenses!inner(group_id)")
+      .eq("expense.group_id", groupId);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map(({ expense_id, user_id, confirmed_at }) => ({
+      expense_id: expense_id as number,
+      user_id: user_id as string,
+      confirmed_at: confirmed_at as string,
+    }));
+  },
+
+  async confirm(expenseId: number): Promise<void> {
+    const uid = await getCurrentUserId();
+    const { error } = await supabase
+      .from("expense_contributions")
+      .insert({ expense_id: expenseId, user_id: uid });
+    if (error && error.code !== "23505") throw new Error(error.message); // dup = already confirmed
+  },
+
+  async retract(expenseId: number): Promise<void> {
+    const uid = await getCurrentUserId();
+    const { error } = await supabase
+      .from("expense_contributions")
+      .delete()
+      .eq("expense_id", expenseId)
+      .eq("user_id", uid);
     if (error) throw new Error(error.message);
   },
 };
