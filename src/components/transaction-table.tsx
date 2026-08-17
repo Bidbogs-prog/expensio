@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDownUp, Check, Inbox, Loader2, Pencil, Search, Trash2, X } from "lucide-react";
+import { ArrowDownUp, Check, Inbox, Loader2, Paperclip, Pencil, Search, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ import {
   useUpdateTransaction,
 } from "@/lib/queries";
 import { useCurrentMonth } from "@/hooks/use-derived";
+import { receiptsApi } from "@/lib/api";
 import { TX_CONFIG, formatCategory, type TxKind } from "@/lib/transaction-ui";
 import { memberLabel } from "@/lib/member-ui";
 import type { GroupMember, Transaction } from "@/types";
@@ -90,7 +91,10 @@ export function TransactionTable({
         (t) =>
           !q ||
           t.name.toLowerCase().includes(q) ||
-          t.category.toLowerCase().includes(q)
+          t.category.toLowerCase().includes(q) ||
+          (t.payee ?? "").toLowerCase().includes(q) ||
+          (t.note ?? "").toLowerCase().includes(q) ||
+          (t.tags ?? []).some((tag) => tag.includes(q))
       )
       .sort(SORTS[sort].fn);
   }, [monthItems, query, categoryFilter, sort]);
@@ -297,9 +301,39 @@ export function TransactionTable({
                         {formatCategory(item.category)}
                       </div>
                     </TableCell>
-                    <TableCell>{formatCategory(item.name)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5" title={item.note ?? undefined}>
+                        <span className="truncate">{formatCategory(item.name)}</span>
+                        {item.receipt_path && <ReceiptLink path={item.receipt_path} />}
+                      </div>
+                      {(item.payee || (item.tags?.length ?? 0) > 0) && (
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                          {item.payee && (
+                            <span className="text-xs text-muted-foreground">{item.payee}</span>
+                          )}
+                          {item.tags?.map((tag) => (
+                            <span
+                              key={tag}
+                              className="rounded-full bg-secondary px-1.5 py-px text-[10px] text-muted-foreground"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(item.date)}</TableCell>
-                    <TableCell className={cn("text-right font-mono font-semibold tabular", cfg.amountClass)}>
+                    <TableCell
+                      className={cn(
+                        "text-right font-mono font-semibold tabular",
+                        // A refund/correction flows the other way — flip the color.
+                        Number(item.amount) < 0
+                          ? isExpense
+                            ? TX_CONFIG.income.amountClass
+                            : TX_CONFIG.expense.amountClass
+                          : cfg.amountClass
+                      )}
+                    >
                       {item.amount.toLocaleString()} {currency}
                     </TableCell>
                     <TableCell>
@@ -360,6 +394,33 @@ export function TransactionTable({
         </>
       )}
     </Card>
+  );
+}
+
+/** Paperclip that opens the receipt via a short-lived signed URL. */
+function ReceiptLink({ path }: { path: string }) {
+  const [opening, setOpening] = useState(false);
+  const open = async () => {
+    setOpening(true);
+    try {
+      const url = await receiptsApi.signedUrl(path);
+      window.open(url, "_blank", "noopener");
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setOpening(false);
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={open}
+      disabled={opening}
+      title="View receipt"
+      className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+    >
+      <Paperclip className="h-3.5 w-3.5" />
+    </button>
   );
 }
 

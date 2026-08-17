@@ -9,6 +9,7 @@ export interface Transaction {
   user_id: string;
   category: string;
   name: string;
+  /** Negative = refund (expense) or correction (income). Never zero. */
   amount: number;
   created_at?: string;
   date: string;
@@ -16,6 +17,12 @@ export interface Transaction {
   group_id?: string | null;
   /** Account the money moved through; null = untracked. */
   account_id?: string | null;
+  /** Merchant / counterparty, e.g. "Marjane", "CIH ATM". */
+  payee?: string | null;
+  note?: string | null;
+  tags?: string[];
+  /** Path inside the private `receipts` storage bucket. */
+  receipt_path?: string | null;
 }
 
 export interface Expense extends Transaction {}

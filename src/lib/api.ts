@@ -533,6 +533,39 @@ export const savingsApi = {
   },
 }
 
+// Receipt attachments (private `receipts` bucket, per-user folders)
+export const receiptsApi = {
+  /** Uploads to <uid>/<uuid>.<ext> and returns the storage path. */
+  async upload(file: File): Promise<string> {
+    return withAuth(async (userId) => {
+      const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
+      const path = `${userId}/${crypto.randomUUID()}.${ext}`
+      const { error } = await supabase.storage
+        .from('receipts')
+        .upload(path, file, { contentType: file.type || undefined })
+      if (error) throw new Error(`Failed to upload receipt: ${error.message}`)
+      return path
+    })
+  },
+
+  /** Short-lived signed URL for viewing a receipt. */
+  async signedUrl(path: string): Promise<string> {
+    const { data, error } = await supabase.storage
+      .from('receipts')
+      .createSignedUrl(path, 60 * 60)
+    if (error || !data?.signedUrl) {
+      throw new Error(`Failed to open receipt: ${error?.message ?? 'no URL'}`)
+    }
+    return data.signedUrl
+  },
+
+  /** Best-effort cleanup when a transaction (or its attachment) goes away. */
+  async remove(path: string): Promise<void> {
+    const { error } = await supabase.storage.from('receipts').remove([path])
+    if (error) console.error('Receipt cleanup failed:', error.message)
+  },
+}
+
 // Accounts API (personal-only; accounts are never shared with groups)
 export type NewAccount = {
   name: string

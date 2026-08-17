@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Check, Pencil, Plus, Settings2, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Paperclip, Pencil, Plus, Settings2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -31,6 +31,7 @@ import {
   useTransactions,
   useUpdateCategoryPrefs,
 } from "@/lib/queries";
+import { receiptsApi } from "@/lib/api";
 import { expenseFormSchema, type ExpenseFormValues } from "@/form-schemas";
 import { TX_CONFIG, formatCategory, type TxKind } from "@/lib/transaction-ui";
 import { ACCOUNT_TYPES } from "@/lib/accounts";
@@ -60,6 +61,11 @@ export function TransactionForm({
   const [showCustom, setShowCustom] = useState(false);
   const [customCategory, setCustomCategory] = useState("");
   const [showManage, setShowManage] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState("");
   // Category being deleted that still has transactions → pick a new home first.
@@ -93,14 +99,33 @@ export function TransactionForm({
       amount: "",
       date: new Date().toISOString().split("T")[0],
       account: "",
+      payee: "",
+      note: "",
+      tags: "",
+      receipt: "",
     } as ExpenseFormValues,
   });
 
-  function onSubmit(values: ExpenseFormValues) {
-    add.mutate(values);
+  async function onSubmit(values: ExpenseFormValues) {
+    let receipt = "";
+    if (receiptFile) {
+      setUploading(true);
+      setUploadError(null);
+      try {
+        receipt = await receiptsApi.upload(receiptFile);
+      } catch (e) {
+        setUploadError(e instanceof Error ? e.message : "Upload failed");
+        setUploading(false);
+        return; // keep the form filled so the user can retry
+      }
+      setUploading(false);
+    }
+    add.mutate({ ...values, receipt });
     form.reset();
     setShowCustom(false);
     setCustomCategory("");
+    setReceiptFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   const addCustom = () => {
@@ -183,18 +208,32 @@ export function TransactionForm({
             <h3 className="font-display text-base font-bold tracking-tight">{cfg.addHeading}</h3>
             <p className="text-sm text-muted-foreground">{cfg.addSubheading}</p>
           </div>
-          {canManage && (
+          <div className="flex items-center gap-1">
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setShowManage((v) => !v)}
+              onClick={() => setShowDetails((v) => !v)}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
-              <Settings2 className="mr-1 h-3.5 w-3.5" />
-              Manage categories
+              <ChevronDown
+                className={cn("mr-1 h-3.5 w-3.5 transition-transform", showDetails && "rotate-180")}
+              />
+              More details
             </Button>
-          )}
+            {canManage && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowManage((v) => !v)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Settings2 className="mr-1 h-3.5 w-3.5" />
+                Manage categories
+              </Button>
+            )}
+          </div>
         </div>
 
         {canManage && showManage && (
@@ -467,10 +506,102 @@ export function TransactionForm({
           )}
         </div>
 
+        {showDetails && (
+          <div className="space-y-4 rounded-lg border bg-muted/20 p-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <FormField
+                control={form.control}
+                name="payee"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Payee</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Marjane, CIH ATM" className="shadow-soft" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="tags"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tags</FormLabel>
+                    <FormControl>
+                      <Input placeholder="comma-separated, e.g. work, ramadan" className="shadow-soft" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormItem>
+                <FormLabel>Receipt</FormLabel>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="h-9 shadow-soft"
+                  >
+                    <Paperclip className="mr-1.5 h-3.5 w-3.5" />
+                    {receiptFile ? "Change" : "Attach"}
+                  </Button>
+                  {receiptFile && (
+                    <>
+                      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                        {receiptFile.name}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setReceiptFile(null);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                        className="h-7 w-7 p-0"
+                        title="Remove attachment"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,.pdf"
+                    className="hidden"
+                    onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                  />
+                </div>
+                {uploadError && <p className="text-xs text-destructive">{uploadError}</p>}
+              </FormItem>
+            </div>
+            <FormField
+              control={form.control}
+              name="note"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Note</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Anything worth remembering about this one" className="shadow-soft" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <p className="text-xs text-muted-foreground">
+              Tip: a negative amount records a refund — it gives the money back to the month.
+            </p>
+          </div>
+        )}
+
         <div className="flex justify-end">
-          <Button type="submit" disabled={busy} className="w-full shadow-soft sm:w-auto sm:min-w-[150px]">
+          <Button type="submit" disabled={busy || uploading} className="w-full shadow-soft sm:w-auto sm:min-w-[150px]">
             <Plus className="mr-1.5 h-4 w-4" />
-            {cfg.addHeading}
+            {uploading ? "Uploading receipt…" : cfg.addHeading}
           </Button>
         </div>
       </form>

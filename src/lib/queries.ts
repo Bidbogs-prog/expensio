@@ -12,7 +12,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { accountsApi, adjustmentsApi, categoryBudgetsApi, expensesApi, incomeApi, savingsApi, templatesApi, transfersApi, userSettingsApi } from "./api";
+import { accountsApi, adjustmentsApi, categoryBudgetsApi, expensesApi, incomeApi, receiptsApi, savingsApi, templatesApi, transfersApi, userSettingsApi } from "./api";
 import type { NewAccount, NewSavingsContribution, NewSavingsGoal, NewTransfer } from "./api";
 import type { TxKind } from "@/lib/transaction-ui";
 import type {
@@ -47,6 +47,14 @@ function listApi(kind: TxKind) {
   return kind === "expense" ? expensesApi : incomeApi;
 }
 
+/** "food, taxi , " → ["food", "taxi"] */
+function parseTags(raw: string | undefined): string[] {
+  return (raw ?? "")
+    .split(",")
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 function toPayload(values: FormValues, groupId?: string | null) {
   return {
     category: values.category,
@@ -55,6 +63,10 @@ function toPayload(values: FormValues, groupId?: string | null) {
     date: values.date,
     group_id: groupId ?? null,
     account_id: values.account || null,
+    payee: values.payee?.trim() || null,
+    note: values.note?.trim() || null,
+    tags: parseTags(values.tags),
+    receipt_path: values.receipt || null,
   };
 }
 
@@ -148,10 +160,17 @@ export function useUpdateTransaction(kind: TxKind, groupId: string | null = null
       const prev = qc.getQueryData<Transaction[]>(key) ?? [];
       qc.setQueryData<Transaction[]>(
         key,
-        // The edit form doesn't touch accounts, so keep the row's link.
+        // Only the core fields are editable inline — keep the row's account,
+        // payee, note, tags and receipt exactly as they were.
         prev.map((t) =>
           t.id === id
-            ? { ...t, ...toPayload(values, t.group_id), account_id: t.account_id ?? null }
+            ? {
+                ...t,
+                category: values.category,
+                name: values.name,
+                amount: Number(values.amount),
+                date: values.date,
+              }
             : t
         )
       );
@@ -173,7 +192,12 @@ export function useDeleteTransaction(kind: TxKind, groupId: string | null = null
   const key = txKey(kind, groupId);
 
   return useMutation({
-    mutationFn: (id: number): Promise<void> => listApi(kind).delete(id),
+    mutationFn: async (id: number): Promise<void> => {
+      // Clean up the attached receipt (best-effort) before the row goes away.
+      const doomed = (qc.getQueryData<Transaction[]>(key) ?? []).find((t) => t.id === id);
+      await listApi(kind).delete(id);
+      if (doomed?.receipt_path) void receiptsApi.remove(doomed.receipt_path);
+    },
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey: key });
       const prev = qc.getQueryData<Transaction[]>(key) ?? [];

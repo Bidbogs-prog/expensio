@@ -1,6 +1,7 @@
 // Minimal RFC-4180 CSV serialize/parse for transaction import & export.
-// Columns: category, name, amount, date (header row required on import,
-// any column order, case-insensitive).
+// Required columns: category, name, amount, date (header row required on
+// import, any column order, case-insensitive). Optional columns: payee,
+// note, tags ("|"-separated). Negative amounts are refunds/corrections.
 
 import type { Transaction } from "@/types";
 
@@ -9,6 +10,9 @@ export interface CsvRow {
   name: string;
   amount: number;
   date: string;
+  payee?: string | null;
+  note?: string | null;
+  tags?: string[];
 }
 
 export interface ParseResult {
@@ -18,7 +22,8 @@ export interface ParseResult {
 }
 
 const COLUMNS = ["category", "name", "amount", "date"] as const;
-const AMOUNT_RE = /^\d+(\.\d{1,2})?$/;
+const OPTIONAL_COLUMNS = ["payee", "note", "tags"] as const;
+const AMOUNT_RE = /^-?\d+(\.\d{1,2})?$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function escapeField(value: string): string {
@@ -26,10 +31,18 @@ function escapeField(value: string): string {
 }
 
 export function transactionsToCsv(items: Transaction[]): string {
-  const lines = [COLUMNS.join(",")];
+  const lines = [[...COLUMNS, ...OPTIONAL_COLUMNS].join(",")];
   for (const t of items) {
     lines.push(
-      [escapeField(t.category), escapeField(t.name), String(t.amount), t.date].join(",")
+      [
+        escapeField(t.category),
+        escapeField(t.name),
+        String(t.amount),
+        t.date,
+        escapeField(t.payee ?? ""),
+        escapeField(t.note ?? ""),
+        escapeField((t.tags ?? []).join("|")),
+      ].join(",")
     );
   }
   return lines.join("\r\n") + "\r\n";
@@ -98,6 +111,13 @@ export function parseTransactionsCsv(text: string): ParseResult {
     index[col] = at;
   }
 
+  // Optional columns: mapped when present, ignored when absent.
+  const opt: Partial<Record<(typeof OPTIONAL_COLUMNS)[number], number>> = {};
+  for (const col of OPTIONAL_COLUMNS) {
+    const at = header.indexOf(col);
+    if (at !== -1) opt[col] = at;
+  }
+
   const rows: CsvRow[] = [];
   const errors: string[] = [];
 
@@ -112,11 +132,30 @@ export function parseTransactionsCsv(text: string): ParseResult {
     if (!category) errors.push(`Line ${line}: category is empty.`);
     else if (!name) errors.push(`Line ${line}: name is empty.`);
     else if (name.length > 50) errors.push(`Line ${line}: name is longer than 50 characters.`);
-    else if (!AMOUNT_RE.test(amount) || Number(amount) <= 0)
+    else if (!AMOUNT_RE.test(amount) || Number(amount) === 0)
       errors.push(`Line ${line}: "${amount}" is not a valid amount.`);
     else if (!DATE_RE.test(date) || isNaN(Date.parse(date)))
       errors.push(`Line ${line}: "${date}" is not a valid date (expected YYYY-MM-DD).`);
-    else rows.push({ category, name, amount: Number(amount), date });
+    else {
+      const payee = opt.payee != null ? (rec[opt.payee] ?? "").trim() : "";
+      const note = opt.note != null ? (rec[opt.note] ?? "").trim() : "";
+      const tags =
+        opt.tags != null
+          ? (rec[opt.tags] ?? "")
+              .split("|")
+              .map((t) => t.trim().toLowerCase())
+              .filter(Boolean)
+          : [];
+      rows.push({
+        category,
+        name,
+        amount: Number(amount),
+        date,
+        payee: payee || null,
+        note: note || null,
+        tags,
+      });
+    }
   }
 
   return { rows, errors };
